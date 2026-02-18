@@ -309,6 +309,83 @@ body::after {
   .competitors-grid { grid-template-columns: 1fr; }
   .radar-container { width: 280px; height: 280px; }
 }
+/* Profiles Modal */
+.profiles-overlay { position:fixed;inset:0;background:rgba(5,10,18,0.92);z-index:2000;display:none;justify-content:center;align-items:center;backdrop-filter:blur(8px); }
+.profiles-overlay.open { display:flex; }
+.profiles-modal { background:var(--bg-panel);border:1px solid var(--border);border-radius:6px;width:96vw;max-width:900px;max-height:90vh;display:flex;flex-direction:column; }
+.profiles-header { display:flex;justify-content:space-between;align-items:center;padding:1rem 1.5rem;border-bottom:1px solid var(--border); }
+.profiles-header-left { display:flex;align-items:center;gap:0.75rem; }
+.profiles-header h2 { font-family:var(--font-display);font-size:1.1rem;font-weight:600;letter-spacing:0.05em; }
+.profiles-close { background:none;border:1px solid var(--border);color:var(--text-secondary);padding:0.3rem 0.7rem;border-radius:3px;cursor:pointer;font-family:var(--font-data);font-size:0.7rem; }
+.profiles-close:hover { border-color:var(--accent-red);color:var(--accent-red); }
+.profiles-body { flex:1;overflow-y:auto;padding:1rem 1.5rem; }
+.profiles-footer { display:flex;justify-content:space-between;align-items:center;padding:0.75rem 1.5rem;border-top:1px solid var(--border); }
+.profiles-footer-left { display:flex;align-items:center;gap:0.75rem; }
+.profiles-status { font-family:var(--font-data);font-size:0.7rem;color:var(--text-secondary); }
+
+/* Profile Row */
+.profile-row { border:1px solid var(--border);border-radius:4px;margin-bottom:0.5rem;transition:all 0.3s ease;overflow:hidden; }
+.profile-row:hover { border-color:var(--border-bright); }
+.profile-row.editing { border-color:var(--accent-green);box-shadow:0 0 20px var(--accent-green-dim); }
+.profile-summary { display:flex;align-items:center;padding:0.6rem 0.8rem;gap:0.6rem;cursor:pointer;transition:background 0.2s; }
+.profile-summary:hover { background:var(--bg-elevated); }
+.profile-dot { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
+.profile-name { font-family:var(--font-display);font-weight:600;font-size:0.85rem;flex:1; }
+.profile-meta { font-family:var(--font-data);font-size:0.65rem;color:var(--text-secondary);display:flex;gap:0.8rem; }
+.profile-threat-badge { font-family:var(--font-data);font-size:0.6rem;padding:0.15rem 0.5rem;border-radius:2px;text-transform:uppercase;letter-spacing:0.1em; }
+.profile-threat-badge.threat-high { background:var(--accent-red-dim);color:var(--accent-red); }
+.profile-threat-badge.threat-medium { background:var(--accent-amber-dim);color:var(--accent-amber); }
+.profile-threat-badge.threat-low { background:var(--accent-blue-dim);color:var(--accent-blue); }
+.profile-edit-btn { background:none;border:1px solid var(--border);color:var(--text-dim);padding:0.2rem 0.5rem;border-radius:2px;cursor:pointer;font-family:var(--font-data);font-size:0.6rem;letter-spacing:0.1em;transition:all 0.2s; }
+.profile-edit-btn:hover { border-color:var(--accent-green);color:var(--accent-green); }
+
+/* Profile Editor */
+.profile-editor { max-height:0;opacity:0;transition:max-height 0.4s ease,opacity 0.3s ease,padding 0.3s ease;overflow:hidden;padding:0 0.8rem; }
+.profile-row.editing .profile-editor { max-height:2000px;opacity:1;padding:0.8rem; }
+.profile-field-grid { display:grid;grid-template-columns:1fr 1fr;gap:0.5rem 1rem;margin-bottom:0.8rem; }
+.profile-field { display:flex;flex-direction:column;gap:0.2rem; }
+.profile-field label { font-family:var(--font-data);font-size:0.6rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em; }
+.profile-field input, .profile-field select, .profile-field textarea { background:var(--bg-deepest);border:1px solid var(--border);color:var(--text-primary);padding:0.35rem 0.5rem;border-radius:3px;font-family:var(--font-body);font-size:0.8rem;outline:none;transition:border-color 0.2s; }
+.profile-field input:focus, .profile-field select:focus, .profile-field textarea:focus { border-color:var(--accent-green); }
+.profile-field textarea { min-height:3rem;resize:vertical; }
+.profile-field select { cursor:pointer; }
+.profile-field input[type="color"] { padding:0.15rem;height:2rem;cursor:pointer; }
+.profile-field input[type="range"] { -webkit-appearance:none;background:var(--border);height:4px;border-radius:2px;border:none;cursor:pointer; }
+.profile-field input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent-green);cursor:pointer; }
+
+/* Capability sliders */
+.cap-slider-row { display:flex;align-items:center;gap:0.5rem;margin-bottom:0.3rem; }
+.cap-slider-label { font-family:var(--font-data);font-size:0.6rem;color:var(--text-secondary);width:100px;text-transform:uppercase; }
+.cap-slider-val { font-family:var(--font-data);font-size:0.7rem;color:var(--accent-green);width:20px;text-align:center; }
+
+/* Focus tags editor */
+.focus-tags-editor { display:flex;flex-wrap:wrap;gap:0.3rem;align-items:center; }
+.focus-tag-edit { display:flex;align-items:center;gap:0.2rem;background:var(--bg-elevated);border:1px solid var(--border);border-radius:2px;padding:0.15rem 0.4rem;font-family:var(--font-data);font-size:0.65rem;color:var(--text-secondary); }
+.focus-tag-remove { background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:0.75rem;padding:0 0.15rem; }
+.focus-tag-input { background:var(--bg-deepest);border:1px solid var(--border);color:var(--text-primary);padding:0.15rem 0.4rem;border-radius:2px;font-family:var(--font-data);font-size:0.65rem;width:80px; }
+
+/* Timeline editor */
+.timeline-editor-row { display:flex;gap:0.4rem;align-items:center;margin-bottom:0.3rem; }
+.timeline-editor-row input { flex:1; }
+.timeline-editor-row input:first-child { max-width:80px; }
+.timeline-remove-btn { background:none;border:none;color:var(--accent-red);cursor:pointer;font-size:0.85rem; }
+
+/* Section dividers in editor */
+.profile-section-title { font-family:var(--font-data);font-size:0.65rem;color:var(--accent-green);text-transform:uppercase;letter-spacing:0.15em;margin:0.8rem 0 0.4rem;padding-bottom:0.3rem;border-bottom:1px solid var(--border); }
+
+/* Editor action buttons */
+.profile-actions { display:flex;gap:0.5rem;margin-top:1rem;justify-content:space-between; }
+.profile-actions-right { display:flex;gap:0.5rem; }
+
+/* AI Scan Results */
+.scan-result-card { border:1px solid var(--border);border-radius:4px;padding:0.8rem;margin-bottom:0.5rem;transition:all 0.3s; }
+.scan-result-card:hover { border-color:var(--border-bright); }
+.scan-result-header { display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem; }
+.scan-result-name { font-family:var(--font-display);font-weight:600;font-size:0.85rem; }
+.scan-result-meta { font-family:var(--font-data);font-size:0.65rem;color:var(--text-secondary); }
+.scan-result-reason { font-family:var(--font-body);font-size:0.75rem;color:var(--text-secondary);margin-bottom:0.5rem; }
+.scan-result-focus { display:flex;flex-wrap:wrap;gap:0.2rem;margin-bottom:0.5rem; }
+
 .btn-lang-active { border-color: var(--accent-green) !important; color: var(--accent-green) !important; }
 </style>
 </head>
@@ -339,6 +416,7 @@ body::after {
     </div>
   </div>
   <div class="header-actions">
+    <button class="btn" id="profilesBtn">PROFILES</button>
     <button class="btn" id="langToggle" style="font-weight:700;letter-spacing:0.1em;">SV / EN</button>
     <button class="btn btn-brief" id="briefBtn">AI BRIEF</button>
     <button class="btn btn-sources" id="sourcesBtn">SOURCES</button>
@@ -432,6 +510,27 @@ body::after {
         <span class="sources-status" id="sourcesStatus"></span>
       </div>
       <button class="source-btn primary" id="addCompetitorBtn">+ ADD COMPETITOR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Profiles Modal -->
+<div class="profiles-overlay" id="profilesOverlay">
+  <div class="profiles-modal">
+    <div class="profiles-header">
+      <div class="profiles-header-left">
+        <h2>Competitor Profiles</h2>
+        <span class="brief-model-tag" style="background:var(--accent-blue-dim);color:var(--accent-blue);border-color:var(--accent-blue);">EDITABLE</span>
+      </div>
+      <button class="profiles-close" id="profilesClose">ESC</button>
+    </div>
+    <div class="profiles-body" id="profilesBody"></div>
+    <div class="profiles-footer">
+      <div class="profiles-footer-left">
+        <button class="source-btn ai" id="scanCompetitorsBtn">SCAN NEW COMPETITORS</button>
+        <button class="source-btn" id="addManualBtn">+ ADD MANUALLY</button>
+        <span class="profiles-status" id="profilesStatus"></span>
+      </div>
     </div>
   </div>
 </div>
@@ -586,6 +685,42 @@ const TRANSLATIONS = {
     offlineTitle: 'RSS feeds require the backend server',
     offlineCmd: 'cd snigel-radar && npm install && npm start',
     offlineNote: 'Radar, profiles, spider chart, and timeline work offline.',
+    // Profiles modal
+    profiles: 'PROFILES',
+    profileEditor: 'Competitor Profiles',
+    profileEditable: 'EDITABLE',
+    profileScanNew: 'SCAN NEW COMPETITORS',
+    profileSave: 'SAVE',
+    profileCancel: 'CANCEL',
+    profileDelete: 'DELETE PROFILE',
+    profileDeleteConfirm: 'Delete {name} permanently? This cannot be undone.',
+    profileDeleted: 'Profile deleted',
+    profileSaved: 'Profile saved',
+    profileAdded: 'Competitor added',
+    profileName: 'Name',
+    profileCountry: 'Country',
+    profileFlag: 'Flag (ISO)',
+    profileFounded: 'Founded',
+    profileRevenue: 'Revenue',
+    profileEmployees: 'Employees',
+    profileHQ: 'Headquarters',
+    profileThreat: 'Threat Level',
+    profileColor: 'Color',
+    profileFocus: 'Product Focus',
+    profileAddFocus: 'Add tag...',
+    profileChannels: 'Channels',
+    profileCapabilities: 'Capabilities (1-10)',
+    profileSwot: 'SWOT Analysis',
+    profileTimeline: 'Timeline Events',
+    profileAddEvent: '+ Add Event',
+    profileRadarAngle: 'Radar Angle',
+    profileRadarDist: 'Radar Distance',
+    scanningCompetitors: 'Scanning for competitors with AI...',
+    scanResults: 'scan results',
+    profileAddThis: 'ADD',
+    profileReason: 'Reason',
+    addManually: '+ ADD MANUALLY',
+    newCompetitorKey: 'Unique key (e.g. "arktis"):',
   },
   sv: {
     pageTitle: 'SNIGEL // Konkurrensunderr\u00e4ttelseradar',
@@ -693,6 +828,42 @@ const TRANSLATIONS = {
     offlineTitle: 'RSS-fl\u00f6den kr\u00e4ver backend-servern',
     offlineCmd: 'cd snigel-radar && npm install && npm start',
     offlineNote: 'Radar, profiler, spindeldiagram och tidslinje fungerar offline.',
+    // Profiles modal
+    profiles: 'PROFILER',
+    profileEditor: 'Konkurrentprofiler',
+    profileEditable: 'REDIGERBAR',
+    profileScanNew: 'SKANNA NYA KONKURRENTER',
+    profileSave: 'SPARA',
+    profileCancel: 'AVBRYT',
+    profileDelete: 'TA BORT PROFIL',
+    profileDeleteConfirm: 'Ta bort {name} permanent? Detta kan inte \u00e5ngras.',
+    profileDeleted: 'Profil borttagen',
+    profileSaved: 'Profil sparad',
+    profileAdded: 'Konkurrent tillagd',
+    profileName: 'Namn',
+    profileCountry: 'Land',
+    profileFlag: 'Flagga (ISO)',
+    profileFounded: 'Grundat',
+    profileRevenue: 'Oms\u00e4ttning',
+    profileEmployees: 'Anst\u00e4llda',
+    profileHQ: 'Huvudkontor',
+    profileThreat: 'Hotniv\u00e5',
+    profileColor: 'F\u00e4rg',
+    profileFocus: 'Produktfokus',
+    profileAddFocus: 'L\u00e4gg till tagg...',
+    profileChannels: 'Kanaler',
+    profileCapabilities: 'Kapabiliteter (1-10)',
+    profileSwot: 'SWOT-analys',
+    profileTimeline: 'Tidslinjeh\u00e4ndelser',
+    profileAddEvent: '+ L\u00e4gg till h\u00e4ndelse',
+    profileRadarAngle: 'Radarvinkel',
+    profileRadarDist: 'Radaravst\u00e5nd',
+    scanningCompetitors: 'Skannar efter konkurrenter med AI...',
+    scanResults: 'skanningsresultat',
+    profileAddThis: 'L\u00c4GG TILL',
+    profileReason: 'Anledning',
+    addManually: '+ L\u00c4GG TILL MANUELLT',
+    newCompetitorKey: 'Unik nyckel (t.ex. "arktis"):',
   }
 };
 
@@ -742,6 +913,15 @@ function applyTranslations() {
   document.querySelector('.sources-header h2').textContent = t('feedSources');
   document.getElementById('suggestBtn').textContent = t('aiSuggestSources');
   document.getElementById('addCompetitorBtn').textContent = t('addCompetitor');
+  // Profiles modal
+  const profilesH2 = document.querySelector('.profiles-header h2');
+  if (profilesH2) profilesH2.textContent = t('profileEditor');
+  const profilesBtn = document.getElementById('profilesBtn');
+  if (profilesBtn) profilesBtn.textContent = t('profiles');
+  const scanCompBtn = document.getElementById('scanCompetitorsBtn');
+  if (scanCompBtn) scanCompBtn.textContent = t('profileScanNew');
+  const addManBtn = document.getElementById('addManualBtn');
+  if (addManBtn) addManBtn.textContent = t('addManually');
   // Loading overlay
   const lt = document.getElementById('loadingText'); if (lt) lt.textContent = t('initRadar');
 }
@@ -749,7 +929,7 @@ function applyTranslations() {
 /* ═══════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════ */
-const COMPETITORS = {
+let COMPETITORS = {
   nfm: { name:'NFM Group', country:'Norway', flag:'NO', founded:1996, revenue:'243 MEUR', employees:'3 400+', hq:'Ski, Norway', threat:'high', color:'#ef4444', focus:['Carry Systems','Ballistic','Clothing','Camouflage'], channels:'B2G/tenders', radarAngle:25, radarDist:0.35,
     capabilities:{breadth:9,scale:10,certs:8,price:2,reach:8,innovation:8},
     swot:{s:'Multi-system portfolio (THOR, SKJOLD, GARM), 7 production facilities, ISO 9001/14001, SA8000. Acquired Paul Boyé (2025).',w:'High portfolio complexity, tender-dependent. Budget volatility risk.',o:'European defense consolidation. M&A to expand capabilities further.',t:'Competition from larger system houses (Mehler). National buy-national policies.'},
@@ -838,11 +1018,18 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('suggestBtn').addEventListener('click', suggestSources);
   document.getElementById('addCompetitorBtn').addEventListener('click', addNewCompetitor);
+  document.getElementById('profilesBtn').addEventListener('click', openProfiles);
+  document.getElementById('profilesClose').addEventListener('click', closeProfiles);
+  document.getElementById('profilesOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeProfiles();
+  });
+  document.getElementById('scanCompetitorsBtn').addEventListener('click', scanForCompetitors);
+  document.getElementById('addManualBtn').addEventListener('click', addManualCompetitor);
   document.getElementById('langToggle').addEventListener('click', () => {
     setLang(currentLang === 'sv' ? 'en' : 'sv');
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { closeBrief(); closeSources(); }
+    if (e.key === 'Escape') { closeBrief(); closeSources(); closeProfiles(); }
   });
   buildFeedTabs();
   renderCompetitorCards();
@@ -853,6 +1040,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderSpider();
   setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 1800);
   await refreshFeeds();
+  await loadProfilesFromServer();
   setInterval(refreshFeeds, 5 * 60 * 1000);
   applyTranslations();
 });
@@ -1738,6 +1926,516 @@ function setSourcesStatus(msg) {
   const el = document.getElementById('sourcesStatus');
   el.textContent = msg;
   setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+}
+
+/* ═══════════════════════════════════════════
+   PROFILES MODAL
+   ═══════════════════════════════════════════ */
+let profilesEditingKey = null;
+
+function openProfiles() {
+  document.getElementById('profilesOverlay').classList.add('open');
+  renderProfiles();
+}
+function closeProfiles() {
+  document.getElementById('profilesOverlay').classList.remove('open');
+  profilesEditingKey = null;
+}
+
+function renderProfiles() {
+  const body = document.getElementById('profilesBody');
+  body.replaceChildren();
+
+  Object.entries(COMPETITORS).forEach(([key, c]) => {
+    const row = createEl('div', { className: 'profile-row' });
+    row.dataset.key = key;
+
+    // Summary row
+    const summary = createEl('div', { className: 'profile-summary' });
+    const dot = createEl('div', { className: 'profile-dot', style: { background: c.color } });
+    const name = createEl('div', { className: 'profile-name' }, c.name);
+    const meta = createEl('div', { className: 'profile-meta' });
+    meta.appendChild(createEl('span', {}, c.flag + ' ' + c.country));
+    meta.appendChild(createEl('span', {}, c.revenue));
+    meta.appendChild(createEl('span', {}, c.employees));
+    const threat = createEl('span', { className: 'profile-threat-badge threat-' + c.threat }, c.threat.toUpperCase());
+    const editBtn = createEl('button', { className: 'profile-edit-btn' }, 'EDIT');
+    editBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProfileEdit(key, row); });
+
+    summary.appendChild(dot);
+    summary.appendChild(name);
+    summary.appendChild(meta);
+    summary.appendChild(threat);
+    summary.appendChild(editBtn);
+    summary.addEventListener('click', () => toggleProfileEdit(key, row));
+
+    // Editor (hidden by default)
+    const editor = createEl('div', { className: 'profile-editor' });
+    editor.innerHTML = buildProfileEditorHTML(key, c);
+
+    row.appendChild(summary);
+    row.appendChild(editor);
+    body.appendChild(row);
+
+    if (profilesEditingKey === key) {
+      row.classList.add('editing');
+      attachEditorListeners(key, row);
+    }
+  });
+}
+
+function toggleProfileEdit(key, row) {
+  const wasEditing = row.classList.contains('editing');
+  // Close all editors
+  document.querySelectorAll('.profile-row.editing').forEach(r => r.classList.remove('editing'));
+
+  if (!wasEditing) {
+    row.classList.add('editing');
+    profilesEditingKey = key;
+    attachEditorListeners(key, row);
+    // Smooth scroll to editor
+    setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  } else {
+    profilesEditingKey = null;
+  }
+}
+
+function buildProfileEditorHTML(key, c) {
+  const caps = c.capabilities || {};
+  const swot = c.swot || {};
+  const capLabels = getCapabilityLabels();
+
+  let focusTags = (c.focus || []).map(f =>
+    `<span class="focus-tag-edit">${esc(f)}<button class="focus-tag-remove" data-tag="${esc(f)}">&times;</button></span>`
+  ).join('');
+
+  let timelineRows = (c.timeline || []).map((ev, i) =>
+    `<div class="timeline-editor-row">
+      <input type="text" value="${esc(ev.date)}" data-tl-idx="${i}" data-tl-field="date" class="tl-input" placeholder="Date">
+      <input type="text" value="${esc(ev.text)}" data-tl-idx="${i}" data-tl-field="text" class="tl-input" placeholder="Event">
+      <button class="timeline-remove-btn" data-tl-idx="${i}">&times;</button>
+    </div>`
+  ).join('');
+
+  let capSliders = Object.entries(capLabels).map(([capKey, label]) =>
+    `<div class="cap-slider-row">
+      <span class="cap-slider-label">${esc(label)}</span>
+      <input type="range" min="1" max="10" value="${caps[capKey] || 5}" data-cap="${capKey}" class="cap-range">
+      <span class="cap-slider-val" id="cap-val-${key}-${capKey}">${caps[capKey] || 5}</span>
+    </div>`
+  ).join('');
+
+  return `
+    <div class="profile-section-title">${t('profileName')} & ${t('profileCountry')}</div>
+    <div class="profile-field-grid">
+      <div class="profile-field"><label>${t('profileName')}</label><input type="text" value="${esc(c.name)}" data-field="name"></div>
+      <div class="profile-field"><label>${t('profileCountry')}</label><input type="text" value="${esc(c.country)}" data-field="country"></div>
+      <div class="profile-field"><label>${t('profileFlag')}</label><input type="text" value="${esc(c.flag)}" data-field="flag" maxlength="2" style="width:60px"></div>
+      <div class="profile-field"><label>${t('profileFounded')}</label><input type="number" value="${c.founded || ''}" data-field="founded"></div>
+      <div class="profile-field"><label>${t('profileRevenue')}</label><input type="text" value="${esc(c.revenue)}" data-field="revenue"></div>
+      <div class="profile-field"><label>${t('profileEmployees')}</label><input type="text" value="${esc(c.employees)}" data-field="employees"></div>
+      <div class="profile-field"><label>${t('profileHQ')}</label><input type="text" value="${esc(c.hq)}" data-field="hq"></div>
+      <div class="profile-field"><label>${t('profileChannels')}</label><input type="text" value="${esc(c.channels || '')}" data-field="channels"></div>
+      <div class="profile-field">
+        <label>${t('profileThreat')}</label>
+        <select data-field="threat">
+          <option value="high" ${c.threat==='high'?'selected':''}>High</option>
+          <option value="medium" ${c.threat==='medium'?'selected':''}>Medium</option>
+          <option value="low" ${c.threat==='low'?'selected':''}>Low</option>
+        </select>
+      </div>
+      <div class="profile-field"><label>${t('profileColor')}</label><input type="color" value="${c.color}" data-field="color"></div>
+    </div>
+
+    <div class="profile-section-title">${t('profileFocus')}</div>
+    <div class="focus-tags-editor" id="focus-editor-${key}">
+      ${focusTags}
+      <input type="text" class="focus-tag-input" id="focus-input-${key}" placeholder="${t('profileAddFocus')}">
+    </div>
+
+    <div class="profile-section-title">${t('profileCapabilities')}</div>
+    ${capSliders}
+
+    <div class="profile-section-title">${t('profileRadarAngle')} / ${t('profileRadarDist')}</div>
+    <div class="profile-field-grid">
+      <div class="profile-field">
+        <label>${t('profileRadarAngle')} (0-360)</label>
+        <input type="range" min="0" max="360" value="${c.radarAngle || 0}" data-field="radarAngle">
+        <span class="cap-slider-val" id="radar-angle-${key}">${c.radarAngle || 0}&deg;</span>
+      </div>
+      <div class="profile-field">
+        <label>${t('profileRadarDist')} (0.1-0.9)</label>
+        <input type="range" min="10" max="90" value="${Math.round((c.radarDist || 0.5) * 100)}" data-field="radarDist">
+        <span class="cap-slider-val" id="radar-dist-${key}">${c.radarDist || 0.5}</span>
+      </div>
+    </div>
+
+    <div class="profile-section-title">${t('profileSwot')}</div>
+    <div class="profile-field-grid">
+      <div class="profile-field"><label>${t('strengths')}</label><textarea data-field="swot-s" rows="3">${esc(swot.s || '')}</textarea></div>
+      <div class="profile-field"><label>${t('weaknesses')}</label><textarea data-field="swot-w" rows="3">${esc(swot.w || '')}</textarea></div>
+      <div class="profile-field"><label>${t('opportunities')}</label><textarea data-field="swot-o" rows="3">${esc(swot.o || '')}</textarea></div>
+      <div class="profile-field"><label>${t('threats')}</label><textarea data-field="swot-t" rows="3">${esc(swot.t || '')}</textarea></div>
+    </div>
+
+    <div class="profile-section-title">${t('profileTimeline')}</div>
+    <div id="timeline-editor-${key}">${timelineRows}</div>
+    <button class="source-btn" id="add-tl-${key}" style="margin-top:0.3rem;font-size:0.65rem;">${t('profileAddEvent')}</button>
+
+    <div class="profile-actions">
+      <button class="source-btn" style="border-color:var(--accent-red);color:var(--accent-red);" id="delete-profile-${key}">${t('profileDelete')}</button>
+      <div class="profile-actions-right">
+        <button class="source-btn" id="cancel-profile-${key}">${t('profileCancel')}</button>
+        <button class="source-btn primary" id="save-profile-${key}">${t('profileSave')}</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachEditorListeners(key, row) {
+  // Capability sliders - live value update
+  row.querySelectorAll('.cap-range').forEach(slider => {
+    slider.addEventListener('input', () => {
+      const capKey = slider.dataset.cap;
+      const valEl = document.getElementById('cap-val-' + key + '-' + capKey);
+      if (valEl) valEl.textContent = slider.value;
+    });
+  });
+
+  // Radar angle/dist sliders
+  const angleSlider = row.querySelector('[data-field="radarAngle"]');
+  if (angleSlider) angleSlider.addEventListener('input', () => {
+    const el = document.getElementById('radar-angle-' + key);
+    if (el) el.textContent = angleSlider.value + '\u00b0';
+  });
+  const distSlider = row.querySelector('[data-field="radarDist"]');
+  if (distSlider) distSlider.addEventListener('input', () => {
+    const el = document.getElementById('radar-dist-' + key);
+    if (el) el.textContent = (parseInt(distSlider.value) / 100).toFixed(2);
+  });
+
+  // Focus tag removal
+  row.querySelectorAll('.focus-tag-remove').forEach(btn => {
+    btn.addEventListener('click', () => btn.parentElement.remove());
+  });
+
+  // Focus tag add on Enter
+  const focusInput = document.getElementById('focus-input-' + key);
+  if (focusInput) {
+    focusInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && focusInput.value.trim()) {
+        e.preventDefault();
+        const tag = focusInput.value.trim();
+        const tagEl = createEl('span', { className: 'focus-tag-edit' });
+        tagEl.textContent = tag;
+        const removeBtn = createEl('button', { className: 'focus-tag-remove' });
+        removeBtn.textContent = '\u00d7';
+        removeBtn.addEventListener('click', () => tagEl.remove());
+        tagEl.appendChild(removeBtn);
+        focusInput.parentElement.insertBefore(tagEl, focusInput);
+        focusInput.value = '';
+      }
+    });
+  }
+
+  // Timeline add event
+  const addTlBtn = document.getElementById('add-tl-' + key);
+  if (addTlBtn) addTlBtn.addEventListener('click', () => {
+    const container = document.getElementById('timeline-editor-' + key);
+    const idx = container.children.length;
+    const div = createEl('div', { className: 'timeline-editor-row' });
+    const dateInput = createEl('input', { type: 'text', placeholder: 'Date', className: 'tl-input' });
+    dateInput.dataset.tlIdx = idx; dateInput.dataset.tlField = 'date';
+    dateInput.style.maxWidth = '80px';
+    const textInput = createEl('input', { type: 'text', placeholder: 'Event', className: 'tl-input' });
+    textInput.dataset.tlIdx = idx; textInput.dataset.tlField = 'text';
+    const removeBtn = createEl('button', { className: 'timeline-remove-btn' });
+    removeBtn.textContent = '\u00d7';
+    removeBtn.addEventListener('click', () => div.remove());
+    div.appendChild(dateInput); div.appendChild(textInput); div.appendChild(removeBtn);
+    container.appendChild(div);
+  });
+
+  // Timeline remove event
+  row.querySelectorAll('.timeline-remove-btn').forEach(btn => {
+    btn.addEventListener('click', () => btn.parentElement.remove());
+  });
+
+  // Save
+  const saveBtn = document.getElementById('save-profile-' + key);
+  if (saveBtn) saveBtn.addEventListener('click', () => saveProfile(key, row));
+
+  // Cancel
+  const cancelBtn = document.getElementById('cancel-profile-' + key);
+  if (cancelBtn) cancelBtn.addEventListener('click', () => {
+    row.classList.remove('editing');
+    profilesEditingKey = null;
+    renderProfiles(); // Reset to original data
+  });
+
+  // Delete
+  const deleteBtn = document.getElementById('delete-profile-' + key);
+  if (deleteBtn) deleteBtn.addEventListener('click', () => deleteProfile(key));
+
+  // Prevent clicks inside editor from toggling
+  row.querySelector('.profile-editor').addEventListener('click', (e) => e.stopPropagation());
+}
+
+function gatherProfileData(key, row) {
+  const c = {};
+  // Simple fields
+  row.querySelectorAll('[data-field]').forEach(el => {
+    const field = el.dataset.field;
+    if (field === 'radarAngle') { c.radarAngle = parseInt(el.value); }
+    else if (field === 'radarDist') { c.radarDist = parseInt(el.value) / 100; }
+    else if (field === 'founded') { c.founded = parseInt(el.value) || 0; }
+    else if (field.startsWith('swot-')) { /* handled below */ }
+    else if (el.tagName === 'SELECT') { c[field] = el.value; }
+    else { c[field] = el.value; }
+  });
+  // SWOT
+  c.swot = {};
+  row.querySelectorAll('[data-field^="swot-"]').forEach(el => {
+    c.swot[el.dataset.field.split('-')[1]] = el.value;
+  });
+  // Capabilities
+  c.capabilities = {};
+  row.querySelectorAll('.cap-range').forEach(slider => {
+    c.capabilities[slider.dataset.cap] = parseInt(slider.value);
+  });
+  // Focus tags
+  c.focus = [];
+  const focusEditor = document.getElementById('focus-editor-' + key);
+  if (focusEditor) {
+    focusEditor.querySelectorAll('.focus-tag-edit').forEach(tag => {
+      const text = tag.childNodes[0]?.textContent?.trim();
+      if (text) c.focus.push(text);
+    });
+  }
+  // Timeline
+  c.timeline = [];
+  const tlContainer = document.getElementById('timeline-editor-' + key);
+  if (tlContainer) {
+    const rows = tlContainer.querySelectorAll('.timeline-editor-row');
+    rows.forEach(tlRow => {
+      const dateEl = tlRow.querySelector('[data-tl-field="date"]');
+      const textEl = tlRow.querySelector('[data-tl-field="text"]');
+      if (dateEl && textEl && (dateEl.value || textEl.value)) {
+        c.timeline.push({ date: dateEl.value, text: textEl.value });
+      }
+    });
+  }
+  return c;
+}
+
+async function saveProfile(key, row) {
+  const status = document.getElementById('profilesStatus');
+  status.textContent = t('saving');
+  const profileData = gatherProfileData(key, row);
+
+  // Update local data immediately
+  COMPETITORS[key] = profileData;
+
+  // Save full profiles to server
+  try {
+    const allProfiles = { competitors: COMPETITORS, snigel: SNIGEL, events: STRATEGIC_EVENTS };
+    const resp = await fetch('/api/profiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allProfiles) });
+    if (!resp.ok) throw new Error('Save failed');
+    status.textContent = t('profileSaved');
+    status.style.color = 'var(--accent-green)';
+  } catch (err) {
+    status.textContent = t('errorPrefix') + ' ' + err.message;
+    status.style.color = 'var(--accent-red)';
+  }
+
+  // Re-render everything
+  renderCompetitorCards();
+  cancelAnimationFrame(radarAnimFrame);
+  initRadar();
+  initSpider();
+  renderSpider();
+  renderTimeline();
+  renderProfiles();
+
+  setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 3000);
+}
+
+async function deleteProfile(key) {
+  const c = COMPETITORS[key];
+  if (!confirm(t('profileDeleteConfirm').replace('{name}', c?.name || key))) return;
+
+  const status = document.getElementById('profilesStatus');
+  status.textContent = t('removing');
+
+  delete COMPETITORS[key];
+  // Also remove from spider selection
+  spiderSelected = spiderSelected.filter(k => k !== key);
+
+  try {
+    const allProfiles = { competitors: COMPETITORS, snigel: SNIGEL, events: STRATEGIC_EVENTS };
+    await fetch('/api/profiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allProfiles) });
+    status.textContent = t('profileDeleted');
+    status.style.color = 'var(--accent-green)';
+  } catch (err) {
+    status.textContent = t('errorPrefix') + ' ' + err.message;
+    status.style.color = 'var(--accent-red)';
+  }
+
+  profilesEditingKey = null;
+  renderProfiles();
+  renderCompetitorCards();
+  cancelAnimationFrame(radarAnimFrame);
+  initRadar();
+  initSpider();
+  renderSpider();
+
+  setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 3000);
+}
+
+async function scanForCompetitors() {
+  const status = document.getElementById('profilesStatus');
+  const body = document.getElementById('profilesBody');
+  status.textContent = t('scanningCompetitors');
+  status.style.color = 'var(--accent-amber)';
+
+  try {
+    const resp = await fetch('/api/profiles/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: currentLang })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error);
+
+    const results = data.suggestions || [];
+    status.textContent = results.length + ' ' + t('scanResults') + (data.usage ? ` (${data.usage.input_tokens + data.usage.output_tokens} ${t('tokens')})` : '');
+    status.style.color = 'var(--accent-green)';
+
+    // Insert scan results at top of body
+    const resultsContainer = createEl('div', { id: 'scanResults' });
+    results.forEach(s => {
+      const card = createEl('div', { className: 'scan-result-card' });
+      const header = createEl('div', { className: 'scan-result-header' });
+      const nameEl = createEl('div', { className: 'scan-result-name' });
+      nameEl.textContent = s.name + ' (' + s.flag + ' ' + s.country + ')';
+      const metaEl = createEl('div', { className: 'scan-result-meta' });
+      metaEl.textContent = [s.revenue, s.employees, s.threat + ' threat'].filter(Boolean).join(' \u00b7 ');
+      header.appendChild(nameEl);
+      header.appendChild(metaEl);
+
+      const reason = createEl('div', { className: 'scan-result-reason' });
+      reason.textContent = s.reason || '';
+
+      const focusDiv = createEl('div', { className: 'scan-result-focus' });
+      (s.focus || []).forEach(f => focusDiv.appendChild(createEl('span', { className: 'focus-tag' }, f)));
+
+      const addBtn = createEl('button', { className: 'source-btn primary', style: { fontSize: '0.65rem' } });
+      addBtn.textContent = t('profileAddThis');
+      addBtn.addEventListener('click', () => addScannedCompetitor(s, addBtn));
+
+      card.appendChild(header);
+      card.appendChild(reason);
+      card.appendChild(focusDiv);
+      card.appendChild(addBtn);
+      resultsContainer.appendChild(card);
+    });
+
+    // Remove previous scan results
+    const oldResults = document.getElementById('scanResults');
+    if (oldResults) oldResults.remove();
+
+    body.insertBefore(resultsContainer, body.firstChild);
+  } catch (err) {
+    status.textContent = t('errorPrefix') + ' ' + err.message;
+    status.style.color = 'var(--accent-red)';
+  }
+
+  setTimeout(() => { status.textContent = ''; status.style.color = ''; }, 8000);
+}
+
+async function addScannedCompetitor(suggestion, btn) {
+  const key = suggestion.key;
+  if (COMPETITORS[key]) {
+    btn.textContent = 'EXISTS';
+    btn.disabled = true;
+    return;
+  }
+
+  // Remove 'reason' from profile data
+  const { reason, key: _k, ...profileData } = suggestion;
+  COMPETITORS[key] = profileData;
+
+  try {
+    const allProfiles = { competitors: COMPETITORS, snigel: SNIGEL, events: STRATEGIC_EVENTS };
+    await fetch('/api/profiles', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(allProfiles) });
+    btn.textContent = t('addedStatus');
+    btn.disabled = true;
+    btn.style.borderColor = 'var(--accent-green)';
+    btn.style.color = 'var(--accent-green)';
+
+    renderCompetitorCards();
+    cancelAnimationFrame(radarAnimFrame);
+    initRadar();
+    initSpider();
+    renderSpider();
+  } catch (err) {
+    btn.textContent = t('errorStatus');
+    btn.style.color = 'var(--accent-red)';
+  }
+}
+
+function addManualCompetitor() {
+  const keyInput = prompt(t('newCompetitorKey'));
+  if (!keyInput) return;
+  const safeKey = keyInput.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  if (COMPETITORS[safeKey]) { alert('Key already exists'); return; }
+
+  const nameInput = prompt(t('profileName') + ':');
+  if (!nameInput) return;
+
+  // Create blank profile
+  COMPETITORS[safeKey] = {
+    name: nameInput,
+    country: '', flag: '', founded: 2020, revenue: '', employees: '',
+    hq: '', threat: 'medium', color: '#64748b',
+    focus: [], channels: '',
+    radarAngle: Math.floor(Math.random() * 360), radarDist: 0.5,
+    capabilities: { breadth: 5, scale: 5, certs: 5, price: 5, reach: 5, innovation: 5 },
+    swot: { s: '', w: '', o: '', t: '' },
+    timeline: []
+  };
+
+  profilesEditingKey = safeKey;
+  renderProfiles();
+
+  // Scroll to new entry
+  setTimeout(() => {
+    const newRow = document.querySelector(`[data-key="${safeKey}"]`);
+    if (newRow) newRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 200);
+}
+
+async function loadProfilesFromServer() {
+  try {
+    const resp = await fetch('/api/profiles');
+    const data = await resp.json();
+    if (data.ok && data.profiles && data.profiles.competitors) {
+      // Replace hardcoded data with server data
+      Object.keys(COMPETITORS).forEach(k => delete COMPETITORS[k]);
+      Object.assign(COMPETITORS, data.profiles.competitors);
+      if (data.profiles.snigel) Object.assign(SNIGEL, data.profiles.snigel);
+      // Re-render everything
+      renderCompetitorCards();
+      cancelAnimationFrame(radarAnimFrame);
+      initRadar();
+      initSpider();
+      renderSpider();
+      renderTimeline();
+      console.log('[PROFILES] Loaded from server.');
+    }
+  } catch (e) {
+    console.log('[PROFILES] No server profiles, using defaults.');
+  }
 }
 
 let resizeTimer;

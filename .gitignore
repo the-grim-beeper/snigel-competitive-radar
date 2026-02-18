@@ -3,3 +3,4 @@ node_modules/
 *.log
 data/sources.json
 data/briefs/
+data/profiles.json
