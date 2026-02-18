@@ -2,8 +2,11 @@ const express = require('express');
 const RSSParser = require('rss-parser');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
+app.use(express.json());
+
 const parser = new RSSParser({
   timeout: 10000,
   headers: {
@@ -14,94 +17,122 @@ const parser = new RSSParser({
 
 const PORT = process.env.PORT || 3000;
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const SOURCES_FILE = path.join(__dirname, 'data', 'sources.json');
+const AI_MODEL = 'claude-sonnet-4-5-20250929';
 
-// --- Competitor feed configuration ---
-const COMPETITOR_FEEDS = {
-  snigel: {
-    name: 'Snigel Design',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SNIGEL%22+tactical&hl=en&gl=SE&ceid=SE:en',
-      'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SnigelDesign%22&hl=sv&gl=SE&ceid=SE:sv',
-    ],
+// --- Default feed sources (used if sources.json doesn't exist) ---
+const DEFAULT_SOURCES = {
+  competitors: {
+    snigel: {
+      name: 'Snigel Design',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SNIGEL%22+tactical&hl=en&gl=SE&ceid=SE:en',
+        'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SnigelDesign%22&hl=sv&gl=SE&ceid=SE:sv',
+      ],
+    },
+    nfm: {
+      name: 'NFM Group',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22NFM+Group%22+military+OR+defense+OR+tactical&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22NFM+Group%22+OR+%22nfm.no%22&hl=no&gl=NO&ceid=NO:no',
+      ],
+    },
+    mehler: {
+      name: 'Mehler Systems',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Protection%22&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Vario%22&hl=de&gl=DE&ceid=DE:de',
+      ],
+    },
+    lindnerhof: {
+      name: 'Lindnerhof Taktik',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Lindnerhof+Taktik%22+OR+%22Lindnerhof-Taktik%22&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Lindnerhof%22+tactical+OR+military&hl=de&gl=DE&ceid=DE:de',
+      ],
+    },
+    sacci: {
+      name: 'Sacci AB',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22+military+OR+tactical+OR+medical&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22&hl=sv&gl=SE&ceid=SE:sv',
+      ],
+    },
+    savotta: {
+      name: 'Savotta',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Savotta%22+military+OR+defense+OR+tactical+Finland&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Savotta%22+puolustusvoimat+OR+armeija&hl=fi&gl=FI&ceid=FI:fi',
+      ],
+    },
+    taiga: {
+      name: 'Taiga AB',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Taiga%22+tactical+clothing+military+Sweden&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Taiga+AB%22+OR+%22taiga.se%22&hl=sv&gl=SE&ceid=SE:sv',
+      ],
+    },
+    tasmanian_tiger: {
+      name: 'Tasmanian Tiger',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+tactical+OR+military+OR+gear&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+Tatonka+tactical&hl=de&gl=DE&ceid=DE:de',
+      ],
+    },
+    equipnor: {
+      name: 'Equipnor',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Equipnor%22+military+OR+defense&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Equipnor%22&hl=sv&gl=SE&ceid=SE:sv',
+      ],
+    },
+    ptd: {
+      name: 'PTD Group',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22+OR+%22PTD+Group%22&hl=en&ceid=US:en',
+        'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22&hl=da&gl=DK&ceid=DK:da',
+      ],
+    },
+    ufpro: {
+      name: 'UF PRO',
+      feeds: [
+        'https://news.google.com/rss/search?q=%22UF+PRO%22+tactical+clothing+military&hl=en&ceid=US:en',
+      ],
+    },
   },
-  nfm: {
-    name: 'NFM Group',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22NFM+Group%22+military+OR+defense+OR+tactical&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22NFM+Group%22+OR+%22nfm.no%22&hl=no&gl=NO&ceid=NO:no',
-    ],
-  },
-  mehler: {
-    name: 'Mehler Systems',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Protection%22&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Vario%22&hl=de&gl=DE&ceid=DE:de',
-    ],
-  },
-  lindnerhof: {
-    name: 'Lindnerhof Taktik',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Lindnerhof+Taktik%22+OR+%22Lindnerhof-Taktik%22&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Lindnerhof%22+tactical+OR+military&hl=de&gl=DE&ceid=DE:de',
-    ],
-  },
-  sacci: {
-    name: 'Sacci AB',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22+military+OR+tactical+OR+medical&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22&hl=sv&gl=SE&ceid=SE:sv',
-    ],
-  },
-  savotta: {
-    name: 'Savotta',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Savotta%22+military+OR+defense+OR+tactical+Finland&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Savotta%22+puolustusvoimat+OR+armeija&hl=fi&gl=FI&ceid=FI:fi',
-    ],
-  },
-  taiga: {
-    name: 'Taiga AB',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Taiga%22+tactical+clothing+military+Sweden&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Taiga+AB%22+OR+%22taiga.se%22&hl=sv&gl=SE&ceid=SE:sv',
-    ],
-  },
-  tasmanian_tiger: {
-    name: 'Tasmanian Tiger',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+tactical+OR+military+OR+gear&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+Tatonka+tactical&hl=de&gl=DE&ceid=DE:de',
-    ],
-  },
-  equipnor: {
-    name: 'Equipnor',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Equipnor%22+military+OR+defense&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Equipnor%22&hl=sv&gl=SE&ceid=SE:sv',
-    ],
-  },
-  ptd: {
-    name: 'PTD Group',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22+OR+%22PTD+Group%22&hl=en&ceid=US:en',
-      'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22&hl=da&gl=DK&ceid=DK:da',
-    ],
-  },
-  ufpro: {
-    name: 'UF PRO',
-    feeds: [
-      'https://news.google.com/rss/search?q=%22UF+PRO%22+tactical+clothing+military&hl=en&ceid=US:en',
-    ],
-  },
+  industry: [
+    'https://news.google.com/rss/search?q=european+defense+equipment+tactical+soldier+modernization&hl=en&ceid=US:en',
+    'https://news.google.com/rss/search?q=soldier+equipment+Europe+procurement+2025+OR+2026&hl=en&ceid=US:en',
+    'https://news.google.com/rss/search?q=europeisk+f%C3%B6rsvar+upphandling+soldatutrustning&hl=sv&gl=SE&ceid=SE:sv',
+    'https://news.google.com/rss/search?q=NATO+soldier+modernization+load+carrying&hl=en&ceid=US:en',
+  ],
 };
 
-// Industry-wide feeds
-const INDUSTRY_FEEDS = [
-  'https://news.google.com/rss/search?q=european+defense+equipment+tactical+soldier+modernization&hl=en&ceid=US:en',
-  'https://news.google.com/rss/search?q=soldier+equipment+Europe+procurement+2025+OR+2026&hl=en&ceid=US:en',
-  'https://news.google.com/rss/search?q=europeisk+f%C3%B6rsvar+upphandling+soldatutrustning&hl=sv&gl=SE&ceid=SE:sv',
-  'https://news.google.com/rss/search?q=NATO+soldier+modernization+load+carrying&hl=en&ceid=US:en',
-];
+// --- Source persistence ---
+function loadSources() {
+  try {
+    if (fs.existsSync(SOURCES_FILE)) {
+      return JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf8'));
+    }
+  } catch (err) {
+    console.error('[SOURCES] Error loading sources.json:', err.message);
+  }
+  // First run or corrupt file — seed from defaults
+  saveSources(DEFAULT_SOURCES);
+  return DEFAULT_SOURCES;
+}
+
+function saveSources(sources) {
+  const dir = path.dirname(SOURCES_FILE);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
+}
+
+let sources = loadSources();
+
+// Convenience accessors (so existing fetch code works unchanged)
+function getCompetitorFeeds() { return sources.competitors; }
+function getIndustryFeeds() { return sources.industry; }
 
 // --- Cache ---
 const cache = {
@@ -137,7 +168,7 @@ async function fetchCompetitorFeeds() {
   console.log('[SCAN] Fetching competitor feeds...');
   const results = {};
 
-  const entries = Object.entries(COMPETITOR_FEEDS);
+  const entries = Object.entries(getCompetitorFeeds());
   for (const [key, config] of entries) {
     const allItems = [];
     for (const feedUrl of config.feeds) {
@@ -176,7 +207,7 @@ async function fetchIndustryFeeds() {
   console.log('[SCAN] Fetching industry feeds...');
   const allItems = [];
 
-  for (const feedUrl of INDUSTRY_FEEDS) {
+  for (const feedUrl of getIndustryFeeds()) {
     const items = await fetchFeed(feedUrl);
     allItems.push(...items);
   }
@@ -267,7 +298,149 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-// --- AI Brief (Claude Opus 4.6 via Anthropic SDK) ---
+// --- Source Management API ---
+app.get('/api/sources', (req, res) => {
+  res.json({ ok: true, sources });
+});
+
+app.put('/api/sources', (req, res) => {
+  const updated = req.body;
+  if (!updated || !updated.competitors || !updated.industry) {
+    return res.status(400).json({ ok: false, error: 'Invalid sources format' });
+  }
+  sources = updated;
+  saveSources(sources);
+  // Invalidate feed caches so next scan uses new sources
+  cache.competitors = { data: null, timestamp: 0 };
+  cache.industry = { data: null, timestamp: 0 };
+  console.log('[SOURCES] Updated and saved. Cache invalidated.');
+  res.json({ ok: true });
+});
+
+app.post('/api/sources/add-competitor', (req, res) => {
+  const { key, name, feeds } = req.body;
+  if (!key || !name || !Array.isArray(feeds)) {
+    return res.status(400).json({ ok: false, error: 'Requires key, name, feeds[]' });
+  }
+  const safeKey = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  sources.competitors[safeKey] = { name, feeds };
+  saveSources(sources);
+  cache.competitors = { data: null, timestamp: 0 };
+  console.log(`[SOURCES] Added competitor: ${name} (${safeKey})`);
+  res.json({ ok: true, key: safeKey });
+});
+
+app.delete('/api/sources/competitor/:key', (req, res) => {
+  const { key } = req.params;
+  if (!sources.competitors[key]) {
+    return res.status(404).json({ ok: false, error: 'Competitor not found' });
+  }
+  delete sources.competitors[key];
+  saveSources(sources);
+  cache.competitors = { data: null, timestamp: 0 };
+  console.log(`[SOURCES] Removed competitor: ${key}`);
+  res.json({ ok: true });
+});
+
+app.post('/api/sources/add-industry', (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ ok: false, error: 'Requires url' });
+  }
+  if (!sources.industry.includes(url)) {
+    sources.industry.push(url);
+    saveSources(sources);
+    cache.industry = { data: null, timestamp: 0 };
+  }
+  res.json({ ok: true });
+});
+
+app.delete('/api/sources/industry', (req, res) => {
+  const { url } = req.body;
+  sources.industry = sources.industry.filter((u) => u !== url);
+  saveSources(sources);
+  cache.industry = { data: null, timestamp: 0 };
+  res.json({ ok: true });
+});
+
+// --- AI Source Suggestions ---
+app.post('/api/sources/suggest', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(400).json({
+      ok: false,
+      error: 'ANTHROPIC_API_KEY not set.',
+    });
+  }
+
+  try {
+    const currentCompetitors = Object.entries(sources.competitors)
+      .map(([key, c]) => `- ${c.name} (${key}): ${c.feeds.length} feeds`)
+      .join('\n');
+    const currentIndustry = sources.industry
+      .map((u, i) => `- Feed ${i + 1}: ${u}`)
+      .join('\n');
+
+    const anthropic = new Anthropic();
+    const response = await anthropic.messages.create({
+      model: AI_MODEL,
+      max_tokens: 2048,
+      system: `You are an OSINT analyst specializing in European defense and tactical equipment industries. You help configure RSS feed sources for competitive intelligence monitoring of Snigel Design AB (Swedish tactical gear manufacturer).
+
+You know that Google News RSS works with this format:
+https://news.google.com/rss/search?q=SEARCH_QUERY&hl=LANG&gl=COUNTRY&ceid=COUNTRY:LANG
+
+URL-encode search terms. Use quotes (%22) for exact matches. Use OR for alternatives. Common languages: en, sv, de, no, fi, da, fr.`,
+      messages: [{
+        role: 'user',
+        content: `Here are the current sources being monitored:
+
+COMPETITOR FEEDS:
+${currentCompetitors}
+
+INDUSTRY FEEDS:
+${currentIndustry}
+
+Analyze the current coverage and suggest 5-8 new RSS feed sources that would improve intelligence coverage. Consider:
+1. Gaps in competitor monitoring (missing languages, alternative search terms)
+2. New competitors not yet tracked
+3. Industry/procurement sources (EU defense tenders, NATO procurement, trade publications)
+4. Event/conference feeds (Eurosatory, DSEI, Enforce Tac)
+
+Return ONLY a JSON array of suggestions, each with this structure:
+{
+  "type": "competitor" or "industry",
+  "key": "snake_case_key (for competitor type only)",
+  "name": "Display Name (for competitor type only)",
+  "url": "full RSS URL",
+  "reason": "Brief explanation of why this source adds value"
+}
+
+Return raw JSON array only, no markdown fences or other text.`,
+      }],
+    });
+
+    const text = response.content[0].text.trim();
+    let suggestions;
+    try {
+      // Strip markdown fences if model includes them despite instructions
+      const cleaned = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+      suggestions = JSON.parse(cleaned);
+    } catch {
+      return res.status(500).json({ ok: false, error: 'AI returned invalid JSON', raw: text });
+    }
+
+    res.json({
+      ok: true,
+      suggestions,
+      usage: response.usage,
+    });
+  } catch (err) {
+    console.error('[SUGGEST] Error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- AI Brief (Claude Sonnet 4.5 via Anthropic SDK) ---
 app.get('/api/brief', async (req, res) => {
   // Require API key via env var
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -354,7 +527,7 @@ Keep it concise but substantive. Each section should be 3-6 bullet points max. U
     const anthropic = new Anthropic();
 
     const stream = anthropic.messages.stream({
-      model: 'claude-opus-4-6',
+      model: AI_MODEL,
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
@@ -404,7 +577,8 @@ app.listen(PORT, () => {
   ║   Status:  ONLINE                           ║
   ║   Port:    ${String(PORT).padEnd(36)}║
   ║   Cache:   ${String(CACHE_TTL / 60000 + ' min TTL').padEnd(36)}║
-  ║   Feeds:   ${String(Object.keys(COMPETITOR_FEEDS).length + ' competitors').padEnd(36)}║
+  ║   Feeds:   ${String(Object.keys(sources.competitors).length + ' competitors').padEnd(36)}║
+  ║   Model:   ${String(AI_MODEL).padEnd(36)}║
   ╚══════════════════════════════════════════════╝
 
   Open http://localhost:${PORT} in your browser.
