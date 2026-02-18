@@ -265,6 +265,18 @@ body::after {
 .source-input { flex: 1; font-family: var(--font-data); font-size: 0.7rem; padding: 0.4rem 0.6rem; background: var(--bg-deepest); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); outline: none; }
 .source-input:focus { border-color: var(--accent-blue); }
 .source-input::placeholder { color: var(--text-dim); }
+.sources-search-bar { display: flex; gap: 0.5rem; padding: 0.6rem 1.5rem; border-top: 1px solid var(--border); }
+.sources-search-bar .source-input { font-size: 0.75rem; }
+#feedSearchResults { max-height: 200px; overflow-y: auto; padding: 0 1.5rem; }
+#feedSearchResults:empty { display: none; }
+.search-result { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.6rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px; margin-bottom: 3px; }
+.search-result-type { font-family: var(--font-data); font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.15rem 0.4rem; border-radius: 2px; flex-shrink: 0; }
+.search-result-type.google_news { color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+.search-result-type.reddit { color: #ff4500; border: 1px solid #ff4500; }
+.search-result-type.discovered { color: var(--accent-green); border: 1px solid var(--accent-green); }
+.search-result-info { flex: 1; min-width: 0; }
+.search-result-title { font-family: var(--font-body); font-size: 0.75rem; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-result-url { font-family: var(--font-data); font-size: 0.6rem; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sources-footer { padding: 0.8rem 1.5rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .sources-footer-left { display: flex; gap: 0.6rem; align-items: center; }
 .sources-status { font-family: var(--font-data); font-size: 0.7rem; color: var(--text-dim); }
@@ -504,6 +516,11 @@ body::after {
       <button class="sources-close" id="sourcesClose">ESC</button>
     </div>
     <div class="sources-body" id="sourcesBody"></div>
+    <div class="sources-search-bar">
+      <input type="text" class="source-input" id="feedSearchInput" placeholder="Search feeds by topic or enter website URL..." style="flex:1">
+      <button class="source-btn primary" id="feedSearchBtn">SEARCH</button>
+    </div>
+    <div id="feedSearchResults"></div>
     <div class="sources-footer">
       <div class="sources-footer-left">
         <button class="source-btn ai" id="suggestBtn">AI SUGGEST NEW SOURCES</button>
@@ -652,6 +669,12 @@ const TRANSLATIONS = {
     editable: 'EDITABLE',
     aiSuggestSources: 'AI SUGGEST NEW SOURCES',
     addCompetitor: '+ ADD COMPETITOR',
+    feedSearchPlaceholder: 'Search feeds by topic or enter website URL...',
+    feedSearchBtn: 'SEARCH',
+    feedSearching: 'Searching...',
+    feedSearchNoResults: 'No feeds found',
+    addAsIndustry: '+INDUSTRY',
+    addAsCompetitor: '+COMPETITOR',
     competitorFeeds: 'Competitor Feeds',
     industryFeeds: 'Industry Feeds',
     feeds: 'feeds',
@@ -796,6 +819,12 @@ const TRANSLATIONS = {
     editable: 'REDIGERBAR',
     aiSuggestSources: 'AI-F\u00d6RESL\u00c5 NYA K\u00c4LLOR',
     addCompetitor: '+ L\u00c4GG TILL KONKURRENT',
+    feedSearchPlaceholder: 'S\u00f6k fl\u00f6den efter \u00e4mne eller ange webbadress...',
+    feedSearchBtn: 'S\u00d6K',
+    feedSearching: 'S\u00f6ker...',
+    feedSearchNoResults: 'Inga fl\u00f6den hittades',
+    addAsIndustry: '+BRANSCH',
+    addAsCompetitor: '+KONKURRENT',
     competitorFeeds: 'Konkurrentfl\u00f6den',
     industryFeeds: 'Branschfl\u00f6den',
     feeds: 'fl\u00f6den',
@@ -913,6 +942,8 @@ function applyTranslations() {
   document.querySelector('.sources-header h2').textContent = t('feedSources');
   document.getElementById('suggestBtn').textContent = t('aiSuggestSources');
   document.getElementById('addCompetitorBtn').textContent = t('addCompetitor');
+  document.getElementById('feedSearchInput').placeholder = t('feedSearchPlaceholder');
+  document.getElementById('feedSearchBtn').textContent = t('feedSearchBtn');
   // Profiles modal
   const profilesH2 = document.querySelector('.profiles-header h2');
   if (profilesH2) profilesH2.textContent = t('profileEditor');
@@ -1018,6 +1049,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('suggestBtn').addEventListener('click', suggestSources);
   document.getElementById('addCompetitorBtn').addEventListener('click', addNewCompetitor);
+  document.getElementById('feedSearchBtn').addEventListener('click', searchFeeds);
+  document.getElementById('feedSearchInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') searchFeeds(); });
   document.getElementById('profilesBtn').addEventListener('click', openProfiles);
   document.getElementById('profilesClose').addEventListener('click', closeProfiles);
   document.getElementById('profilesOverlay').addEventListener('click', (e) => {
@@ -1931,6 +1964,106 @@ function setSourcesStatus(msg) {
   const el = document.getElementById('sourcesStatus');
   el.textContent = msg;
   setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+}
+
+async function searchFeeds() {
+  const input = document.getElementById('feedSearchInput');
+  const btn = document.getElementById('feedSearchBtn');
+  const container = document.getElementById('feedSearchResults');
+  const query = input.value.trim();
+  if (!query) return;
+
+  btn.textContent = t('feedSearching');
+  btn.disabled = true;
+  container.innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/sources/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, lang: currentLang })
+    });
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error);
+
+    if (!data.results.length) {
+      container.textContent = t('feedSearchNoResults');
+      return;
+    }
+
+    data.results.forEach(r => {
+      const row = createEl('div', { className: 'search-result' });
+
+      const typeBadge = createEl('span', { className: `search-result-type ${r.type}` });
+      typeBadge.textContent = r.type === 'google_news' ? 'NEWS' : r.type === 'reddit' ? 'REDDIT' : 'RSS';
+
+      const info = createEl('div', { className: 'search-result-info' });
+      info.appendChild(createEl('div', { className: 'search-result-title' }, r.title));
+      info.appendChild(createEl('div', { className: 'search-result-url' }, r.url));
+
+      const addIndBtn = createEl('button', { className: 'source-btn primary', style: { fontSize: '0.6rem', padding: '0.2rem 0.5rem' } });
+      addIndBtn.textContent = t('addAsIndustry');
+      addIndBtn.addEventListener('click', async () => {
+        addIndBtn.disabled = true;
+        addIndBtn.textContent = '...';
+        try {
+          await fetch('/api/sources/add-industry', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: r.url })
+          });
+          sourcesData.industry.push(r.url);
+          addIndBtn.textContent = t('addedStatus');
+          addIndBtn.style.color = 'var(--accent-green)';
+          addIndBtn.style.borderColor = 'var(--accent-green)';
+          // Preserve search results across re-render
+          const searchResults = container.innerHTML;
+          renderSources();
+          container.innerHTML = searchResults;
+          setSourcesStatus(t('sourceAccepted'));
+        } catch { addIndBtn.textContent = t('errorStatus'); addIndBtn.style.color = 'var(--accent-red)'; }
+      });
+
+      const addCompBtn = createEl('button', { className: 'source-btn', style: { fontSize: '0.6rem', padding: '0.2rem 0.5rem' } });
+      addCompBtn.textContent = t('addAsCompetitor');
+      addCompBtn.addEventListener('click', async () => {
+        const name = prompt(t('competitorName') || 'Competitor name:');
+        if (!name) return;
+        const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        addCompBtn.disabled = true;
+        addCompBtn.textContent = '...';
+        try {
+          if (sourcesData.competitors[key]) {
+            sourcesData.competitors[key].feeds.push(r.url);
+            await fetch('/api/sources', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sourcesData) });
+          } else {
+            await fetch('/api/sources/add-competitor', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key, name, feeds: [r.url] })
+            });
+            sourcesData.competitors[key] = { name, feeds: [r.url] };
+          }
+          addCompBtn.textContent = t('addedStatus');
+          addCompBtn.style.color = 'var(--accent-green)';
+          addCompBtn.style.borderColor = 'var(--accent-green)';
+          const searchResults = container.innerHTML;
+          renderSources();
+          container.innerHTML = searchResults;
+          setSourcesStatus(t('sourceAccepted'));
+        } catch { addCompBtn.textContent = t('errorStatus'); addCompBtn.style.color = 'var(--accent-red)'; }
+      });
+
+      row.appendChild(typeBadge);
+      row.appendChild(info);
+      row.appendChild(addIndBtn);
+      row.appendChild(addCompBtn);
+      container.appendChild(row);
+    });
+  } catch (err) {
+    container.textContent = t('errorPrefix') + ' ' + err.message;
+  } finally {
+    btn.textContent = t('feedSearchBtn');
+    btn.disabled = false;
+  }
 }
 
 /* ═══════════════════════════════════════════
