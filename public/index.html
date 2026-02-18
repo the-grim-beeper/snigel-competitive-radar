@@ -1912,9 +1912,14 @@ async function acceptSuggestion(suggestion, btn) {
       sourcesData.industry.push(suggestion.url);
     }
     btn.textContent = t('addedStatus');
+    btn.disabled = true;
     btn.style.borderColor = 'var(--accent-green)';
     btn.style.color = 'var(--accent-green)';
+    // Preserve suggestion list across re-render
+    const oldSuggest = document.getElementById('suggestSection');
+    oldSuggest.remove();
     renderSources();
+    document.getElementById('suggestSection').replaceWith(oldSuggest);
     setSourcesStatus(t('sourceAccepted'));
   } catch (err) {
     btn.textContent = t('errorStatus');
@@ -1944,7 +1949,11 @@ function closeProfiles() {
 
 function renderProfiles() {
   const body = document.getElementById('profilesBody');
+  // Preserve scan results across re-render
+  const oldScanResults = document.getElementById('scanResults');
+  if (oldScanResults) oldScanResults.remove();
   body.replaceChildren();
+  if (oldScanResults) body.insertBefore(oldScanResults, body.firstChild);
 
   Object.entries(COMPETITORS).forEach(([key, c]) => {
     const row = createEl('div', { className: 'profile-row' });
