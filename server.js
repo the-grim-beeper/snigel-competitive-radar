@@ -19,6 +19,7 @@ const PORT = process.env.PORT || 3000;
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
 const SOURCES_FILE = path.join(__dirname, 'data', 'sources.json');
 const AI_MODEL = 'claude-sonnet-4-5-20250929';
+const BRIEFS_DIR = path.join(__dirname, 'data', 'briefs');
 
 // --- Default feed sources (used if sources.json doesn't exist) ---
 const DEFAULT_SOURCES = {
@@ -133,6 +134,47 @@ let sources = loadSources();
 // Convenience accessors (so existing fetch code works unchanged)
 function getCompetitorFeeds() { return sources.competitors; }
 function getIndustryFeeds() { return sources.industry; }
+
+// --- Brief persistence ---
+function ensureBriefsDir() {
+  if (!fs.existsSync(BRIEFS_DIR)) fs.mkdirSync(BRIEFS_DIR, { recursive: true });
+}
+
+function saveBrief(text, usage) {
+  ensureBriefsDir();
+  const id = new Date().toISOString().replace(/[:.]/g, '-');
+  const brief = {
+    id,
+    timestamp: new Date().toISOString(),
+    text,
+    usage,
+    signalCount: 0,
+  };
+  fs.writeFileSync(path.join(BRIEFS_DIR, `${id}.json`), JSON.stringify(brief, null, 2));
+  console.log(`[BRIEF] Saved as ${id}.json`);
+  return brief;
+}
+
+function loadBriefs() {
+  ensureBriefsDir();
+  const files = fs.readdirSync(BRIEFS_DIR).filter(f => f.endsWith('.json')).sort().reverse();
+  return files.map(f => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(BRIEFS_DIR, f), 'utf8'));
+    } catch { return null; }
+  }).filter(Boolean);
+}
+
+function getRecentBriefSummaries(count = 3) {
+  const briefs = loadBriefs().slice(0, count);
+  if (briefs.length === 0) return '';
+  return briefs.map((b, i) => {
+    const date = new Date(b.timestamp).toISOString().split('T')[0];
+    // Take first 800 chars of each brief as context
+    const excerpt = b.text.substring(0, 800);
+    return `--- Previous Brief (${date}) ---\n${excerpt}\n---`;
+  }).join('\n\n');
+}
 
 // --- Cache ---
 const cache = {
@@ -480,6 +522,11 @@ app.get('/api/brief', async (req, res) => {
 
     const signalDigest = signalLines.join('\n');
 
+    const previousBriefs = getRecentBriefSummaries(3);
+    const continuityContext = previousBriefs
+      ? `\n\nPREVIOUS INTELLIGENCE BRIEFS (for continuity - reference changes since last brief, highlight new developments):\n${previousBriefs}\n`
+      : '';
+
     const systemPrompt = `You are a competitive intelligence analyst for Snigel Design AB, a Swedish company (est. 1990, ~365 MSEK revenue, ~25 employees, HQ Farsta) that makes modular tactical carry systems, ballistic vests/plate carriers, and tactical clothing for military and law enforcement. Key products include the Squeeze plate carrier system and Spoon ergonomic load-bearing system. In March 2025, eEquity invested ~50% stake to drive international growth toward 1 BnSEK.
 
 Snigel's primary competitors are:
@@ -498,7 +545,7 @@ Your role is to produce a concise, executive-level competitive intelligence brie
     const userPrompt = `Here are the latest ${signalLines.length} intelligence signals collected from RSS feeds (today is ${new Date().toISOString().split('T')[0]}):
 
 ${signalDigest}
-
+${continuityContext}
 Based on these signals, produce a COMPETITIVE INTELLIGENCE BRIEF with these sections:
 
 ## PRIORITY ALERTS
@@ -516,7 +563,7 @@ Broader European defense/procurement trends that affect Snigel's business.
 ## SIGNAL QUALITY NOTE
 Brief note on signal coverage gaps or areas where more intelligence is needed.
 
-Keep it concise but substantive. Each section should be 3-6 bullet points max. Use markdown formatting.`;
+Keep it concise but substantive. If previous briefs are provided, explicitly note what has CHANGED since the last assessment and highlight NEW developments. Each section should be 3-6 bullet points max. Use markdown formatting.`;
 
     // Stream the response
     res.setHeader('Content-Type', 'text/event-stream');
@@ -533,7 +580,9 @@ Keep it concise but substantive. Each section should be 3-6 bullet points max. U
       messages: [{ role: 'user', content: userPrompt }],
     });
 
+    let fullText = '';
     stream.on('text', (text) => {
+      fullText += text;
       res.write(`data: ${JSON.stringify({ type: 'delta', text })}\n\n`);
     });
 
@@ -551,6 +600,9 @@ Keep it concise but substantive. Each section should be 3-6 bullet points max. U
     );
     res.end();
 
+    // Save the completed brief
+    saveBrief(fullText, finalMessage.usage);
+
     console.log(
       `[BRIEF] Generated. Tokens: ${finalMessage.usage.input_tokens} in / ${finalMessage.usage.output_tokens} out`
     );
@@ -564,6 +616,32 @@ Keep it concise but substantive. Each section should be 3-6 bullet points max. U
       );
       res.end();
     }
+  }
+});
+
+// --- Brief History API ---
+app.get('/api/briefs', (req, res) => {
+  const briefs = loadBriefs();
+  // Return list without full text for efficiency
+  const list = briefs.map(b => ({
+    id: b.id,
+    timestamp: b.timestamp,
+    usage: b.usage,
+    preview: b.text.substring(0, 200),
+  }));
+  res.json({ ok: true, briefs: list });
+});
+
+app.get('/api/briefs/:id', (req, res) => {
+  const filePath = path.join(BRIEFS_DIR, `${req.params.id}.json`);
+  try {
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, error: 'Brief not found' });
+    }
+    const brief = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    res.json({ ok: true, brief });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 
