@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="sv">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SNIGEL // Competitive Intelligence Radar</title>
+<title>SNIGEL // Konkurrensunderrättelseradar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Oxanium:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -309,13 +309,14 @@ body::after {
   .competitors-grid { grid-template-columns: 1fr; }
   .radar-container { width: 280px; height: 280px; }
 }
+.btn-lang-active { border-color: var(--accent-green) !important; color: var(--accent-green) !important; }
 </style>
 </head>
 <body>
 
 <div class="loading-overlay" id="loadingOverlay">
   <div class="loading-radar"></div>
-  <div class="loading-text">Initializing radar</div>
+  <div class="loading-text" id="loadingText">Initierar radar</div>
 </div>
 
 <header class="header">
@@ -338,6 +339,7 @@ body::after {
     </div>
   </div>
   <div class="header-actions">
+    <button class="btn" id="langToggle" style="font-weight:700;letter-spacing:0.1em;">SV / EN</button>
     <button class="btn btn-brief" id="briefBtn">AI BRIEF</button>
     <button class="btn btn-sources" id="sourcesBtn">SOURCES</button>
     <button class="btn" id="scanBtn">SCAN NOW</button>
@@ -463,6 +465,288 @@ function createEl(tag, attrs, children) {
 }
 
 /* ═══════════════════════════════════════════
+   INTERNATIONALIZATION (i18n)
+   ═══════════════════════════════════════════ */
+const TRANSLATIONS = {
+  en: {
+    // Header
+    pageTitle: 'SNIGEL // Competitive Intelligence Radar',
+    tagline: 'Competitive Intelligence System',
+    online: 'ONLINE',
+    scanning: 'SCANNING...',
+    lastScan: 'LAST SCAN:',
+    signals: 'SIGNALS',
+    aiBrief: 'AI BRIEF',
+    sources: 'SOURCES',
+    scanNow: 'SCAN NOW',
+    gridView: 'GRID VIEW',
+    listView: 'LIST VIEW',
+    // Loading
+    initRadar: 'Initializing radar',
+    // Panel titles
+    threatRadar: 'Threat Radar',
+    radarSub: 'Proximity = competitive overlap',
+    liveFeed: 'Live Intelligence Feed',
+    loading: 'Loading...',
+    competitorProfiles: 'Competitor Profiles',
+    clickExpand: 'Click to expand SWOT analysis',
+    capabilityComparison: 'Capability Comparison',
+    eventTimeline: 'Strategic Event Timeline',
+    keyMoves: 'Key competitive moves',
+    // Feed tabs
+    allSignals: 'All Signals',
+    competitors: 'Competitors',
+    industry: 'Industry',
+    items: 'items',
+    serverOffline: 'Server offline',
+    noSignalsFilter: 'No signals detected in current filter.',
+    // Time ago
+    mAgo: 'm ago',
+    hAgo: 'h ago',
+    dAgo: 'd ago',
+    // Competitor cards
+    revenue: 'Revenue',
+    employees: 'Employees',
+    threatLabel: 'threat',
+    high: 'high',
+    medium: 'medium',
+    low: 'low',
+    strengths: 'Strengths',
+    weaknesses: 'Weaknesses',
+    opportunities: 'Opportunities',
+    threats: 'Threats',
+    keyEvents: 'Key Events',
+    latestSignals: 'Latest Signals',
+    clickLoadSignals: 'Click to load signals...',
+    noSignalsCompetitor: 'No signals detected for this competitor.',
+    // Radar sectors
+    carry: 'CARRY',
+    ballistic: 'BALLISTIC',
+    clothing: 'CLOTHING',
+    integration: 'INTEGRATION',
+    medical: 'MEDICAL',
+    distribution: 'DISTRIBUTION',
+    // Radar rings
+    critical: 'CRITICAL',
+    // Spider / capabilities
+    productBreadth: 'Product Breadth',
+    productionScale: 'Production Scale',
+    certifications: 'Certifications',
+    priceTransparency: 'Price Transparency',
+    geographicReach: 'Geographic Reach',
+    innovation: 'Innovation',
+    // Brief modal
+    intelligenceBrief: 'Intelligence Brief',
+    history: 'HISTORY',
+    printPdf: 'PRINT PDF',
+    generatingBrief: 'Generating brief...',
+    complete: 'Complete',
+    loadingHistory: 'Loading brief history...',
+    noBriefs: 'No briefs generated yet. Click "AI BRIEF" to create one.',
+    savedBriefs: 'saved briefs \u2014 click to view',
+    briefFrom: 'Brief from',
+    errorPrefix: 'Error:',
+    connectionError: 'Connection error:',
+    loadingText: 'Loading...',
+    // Sources modal
+    feedSources: 'Feed Sources',
+    editable: 'EDITABLE',
+    aiSuggestSources: 'AI SUGGEST NEW SOURCES',
+    addCompetitor: '+ ADD COMPETITOR',
+    competitorFeeds: 'Competitor Feeds',
+    industryFeeds: 'Industry Feeds',
+    feeds: 'feeds',
+    loadingSources: 'Loading sources...',
+    failedLoadSources: 'Failed to load sources:',
+    removing: 'Removing...',
+    saving: 'Saving...',
+    adding: 'Adding...',
+    feedRemoved: 'Feed removed',
+    feedAdded: 'Feed added',
+    industryFeedRemoved: 'Industry feed removed',
+    added: 'Added',
+    delete: 'DELETE',
+    addRssUrl: 'Add RSS feed URL...',
+    addBtn: '+ ADD',
+    addIndustryUrl: 'Add industry RSS feed URL...',
+    aiSuggestions: 'AI Suggestions',
+    analyzingGaps: 'Analyzing coverage gaps with Sonnet 4.5...',
+    suggestions: 'suggestions',
+    tokens: 'tokens',
+    accept: 'ACCEPT',
+    addedStatus: 'ADDED',
+    errorStatus: 'ERROR',
+    sourceAccepted: 'Source accepted',
+    suggestionError: 'Suggestion error:',
+    competitorNamePrompt: 'Competitor display name (e.g. "Arktis Ltd"):',
+    firstFeedPrompt: 'First RSS feed URL (you can add more later):',
+    removeConfirm: 'Remove {name} and all its feeds?',
+    removed: 'Removed',
+    // Offline
+    offlineTitle: 'RSS feeds require the backend server',
+    offlineCmd: 'cd snigel-radar && npm install && npm start',
+    offlineNote: 'Radar, profiles, spider chart, and timeline work offline.',
+  },
+  sv: {
+    pageTitle: 'SNIGEL // Konkurrensunderr\u00e4ttelseradar',
+    tagline: 'Konkurrensunderr\u00e4ttelsesystem',
+    online: 'ONLINE',
+    scanning: 'SKANNAR...',
+    lastScan: 'SENASTE SKANNING:',
+    signals: 'SIGNALER',
+    aiBrief: 'AI-BRIEFING',
+    sources: 'K\u00c4LLOR',
+    scanNow: 'SKANNA NU',
+    gridView: 'RUTN\u00c4T',
+    listView: 'LISTA',
+    initRadar: 'Initierar radar',
+    threatRadar: 'Hotradar',
+    radarSub: 'N\u00e4rhet = konkurrerande \u00f6verlappning',
+    liveFeed: 'Underr\u00e4ttelsefl\u00f6de',
+    loading: 'Laddar...',
+    competitorProfiles: 'Konkurrentprofiler',
+    clickExpand: 'Klicka f\u00f6r att expandera SWOT-analys',
+    capabilityComparison: 'Kapabilitetsj\u00e4mf\u00f6relse',
+    eventTimeline: 'Strategisk tidslinje',
+    keyMoves: 'Viktiga konkurrenser\u00f6relser',
+    allSignals: 'Alla signaler',
+    competitors: 'Konkurrenter',
+    industry: 'Bransch',
+    items: 'objekt',
+    serverOffline: 'Server offline',
+    noSignalsFilter: 'Inga signaler i nuvarande filter.',
+    mAgo: 'm sedan',
+    hAgo: 't sedan',
+    dAgo: 'd sedan',
+    revenue: 'Oms\u00e4ttning',
+    employees: 'Anst\u00e4llda',
+    threatLabel: 'hot',
+    high: 'h\u00f6g',
+    medium: 'medel',
+    low: 'l\u00e5g',
+    strengths: 'Styrkor',
+    weaknesses: 'Svagheter',
+    opportunities: 'M\u00f6jligheter',
+    threats: 'Hot',
+    keyEvents: 'Viktiga h\u00e4ndelser',
+    latestSignals: 'Senaste signaler',
+    clickLoadSignals: 'Klicka f\u00f6r att ladda signaler...',
+    noSignalsCompetitor: 'Inga signaler uppt\u00e4ckta f\u00f6r denna konkurrent.',
+    carry: 'B\u00c4RSYSTEM',
+    ballistic: 'BALLISTIK',
+    clothing: 'KL\u00c4DER',
+    integration: 'INTEGRATION',
+    medical: 'SJUKV\u00c5RD',
+    distribution: 'DISTRIBUTION',
+    critical: 'KRITISK',
+    productBreadth: 'Produktbredd',
+    productionScale: 'Produktionsskala',
+    certifications: 'Certifieringar',
+    priceTransparency: 'Pristransparens',
+    geographicReach: 'Geografisk r\u00e4ckvidd',
+    innovation: 'Innovation',
+    intelligenceBrief: 'Underr\u00e4ttelsebriefing',
+    history: 'HISTORIK',
+    printPdf: 'SKRIV UT PDF',
+    generatingBrief: 'Genererar briefing...',
+    complete: 'Klar',
+    loadingHistory: 'Laddar briefinghistorik...',
+    noBriefs: 'Inga briefingar skapade \u00e4nnu. Klicka "AI-BRIEFING" f\u00f6r att skapa en.',
+    savedBriefs: 'sparade briefingar \u2014 klicka f\u00f6r att visa',
+    briefFrom: 'Briefing fr\u00e5n',
+    errorPrefix: 'Fel:',
+    connectionError: 'Anslutningsfel:',
+    loadingText: 'Laddar...',
+    feedSources: 'Fl\u00f6desk\u00e4llor',
+    editable: 'REDIGERBAR',
+    aiSuggestSources: 'AI-F\u00d6RESL\u00c5 NYA K\u00c4LLOR',
+    addCompetitor: '+ L\u00c4GG TILL KONKURRENT',
+    competitorFeeds: 'Konkurrentfl\u00f6den',
+    industryFeeds: 'Branschfl\u00f6den',
+    feeds: 'fl\u00f6den',
+    loadingSources: 'Laddar k\u00e4llor...',
+    failedLoadSources: 'Kunde inte ladda k\u00e4llor:',
+    removing: 'Tar bort...',
+    saving: 'Sparar...',
+    adding: 'L\u00e4gger till...',
+    feedRemoved: 'Fl\u00f6de borttaget',
+    feedAdded: 'Fl\u00f6de tillagt',
+    industryFeedRemoved: 'Branschfl\u00f6de borttaget',
+    added: 'Tillagd',
+    delete: 'TA BORT',
+    addRssUrl: 'L\u00e4gg till RSS-fl\u00f6des-URL...',
+    addBtn: '+ L\u00c4GG TILL',
+    addIndustryUrl: 'L\u00e4gg till bransch-RSS-URL...',
+    aiSuggestions: 'AI-f\u00f6rslag',
+    analyzingGaps: 'Analyserar t\u00e4ckningsluckor med Sonnet 4.5...',
+    suggestions: 'f\u00f6rslag',
+    tokens: 'tokens',
+    accept: 'ACCEPTERA',
+    addedStatus: 'TILLAGD',
+    errorStatus: 'FEL',
+    sourceAccepted: 'K\u00e4lla accepterad',
+    suggestionError: 'F\u00f6rslagsfel:',
+    competitorNamePrompt: 'Konkurrentens visningsnamn (t.ex. "Arktis Ltd"):',
+    firstFeedPrompt: 'F\u00f6rsta RSS-fl\u00f6dets URL (du kan l\u00e4gga till fler senare):',
+    removeConfirm: 'Ta bort {name} och alla dess fl\u00f6den?',
+    removed: 'Borttagen',
+    offlineTitle: 'RSS-fl\u00f6den kr\u00e4ver backend-servern',
+    offlineCmd: 'cd snigel-radar && npm install && npm start',
+    offlineNote: 'Radar, profiler, spindeldiagram och tidslinje fungerar offline.',
+  }
+};
+
+let currentLang = localStorage.getItem('snigel-lang') || 'sv';
+function t(key) { return TRANSLATIONS[currentLang]?.[key] || TRANSLATIONS.en[key] || key; }
+function setLang(lang) {
+  currentLang = lang;
+  localStorage.setItem('snigel-lang', lang);
+  document.documentElement.lang = lang;
+  document.title = t('pageTitle');
+  applyTranslations();
+}
+
+function applyTranslations() {
+  // Update header
+  document.querySelector('.logo-sub').textContent = t('tagline');
+  document.getElementById('briefBtn').textContent = t('aiBrief');
+  document.getElementById('sourcesBtn').textContent = t('sources');
+  document.getElementById('scanBtn').textContent = t('scanNow');
+  // Update lang toggle button display
+  const langBtn = document.getElementById('langToggle');
+  langBtn.textContent = currentLang === 'sv' ? 'SV / en' : 'sv / EN';
+  // viewToggle might say GRID VIEW or LIST VIEW
+  const vt = document.getElementById('viewToggle');
+  const grid = document.getElementById('competitorsGrid');
+  vt.textContent = grid.style.gridTemplateColumns === '1fr' ? t('listView') : t('gridView');
+  // Re-render dynamic content
+  buildFeedTabs();
+  renderCompetitorCards();
+  renderTimeline();
+  renderFeed();
+  cancelAnimationFrame(radarAnimFrame);
+  initRadar();
+  renderSpider();
+  // Update static panel headers
+  const panels = document.querySelectorAll('.panel');
+  if (panels[0]) { panels[0].querySelector('.panel-title').lastChild.textContent = t('threatRadar'); panels[0].querySelector('.panel-count').textContent = t('radarSub'); }
+  if (panels[1]) { panels[1].querySelector('.panel-title').lastChild.textContent = t('liveFeed'); }
+  if (panels[2]) { panels[2].querySelector('.panel-title').lastChild.textContent = t('competitorProfiles'); panels[2].querySelector('.panel-count').textContent = t('clickExpand'); }
+  if (panels[3]) { panels[3].querySelector('.panel-title').lastChild.textContent = t('capabilityComparison'); }
+  if (panels[4]) { panels[4].querySelector('.panel-title').lastChild.textContent = t('eventTimeline'); panels[4].querySelector('.panel-count').textContent = t('keyMoves'); }
+  // Brief modal
+  document.querySelector('.brief-header h2').textContent = t('intelligenceBrief');
+  document.getElementById('briefHistoryBtn').textContent = t('history');
+  document.getElementById('briefPrintBtn').textContent = t('printPdf');
+  // Sources modal
+  document.querySelector('.sources-header h2').textContent = t('feedSources');
+  document.getElementById('suggestBtn').textContent = t('aiSuggestSources');
+  document.getElementById('addCompetitorBtn').textContent = t('addCompetitor');
+  // Loading overlay
+  const lt = document.getElementById('loadingText'); if (lt) lt.textContent = t('initRadar');
+}
+
+/* ═══════════════════════════════════════════
    DATA
    ═══════════════════════════════════════════ */
 const COMPETITORS = {
@@ -505,7 +789,7 @@ const COMPETITORS = {
 };
 
 const SNIGEL = { name:'SNIGEL', color:'#00e5a0', capabilities:{breadth:7,scale:4,certs:4,price:5,reach:5,innovation:8} };
-const CAPABILITY_LABELS = { breadth:'Product Breadth', scale:'Production Scale', certs:'Certifications', price:'Price Transparency', reach:'Geographic Reach', innovation:'Innovation' };
+function getCapabilityLabels() { return { breadth:t('productBreadth'), scale:t('productionScale'), certs:t('certifications'), price:t('priceTransparency'), reach:t('geographicReach'), innovation:t('innovation') }; }
 
 const STRATEGIC_EVENTS = [
   {date:'2025-10',company:'NFM Group',text:'Acquires Paul Boyé (French manufacturer) 100%. Strengthens European presence.',tag:'ma',color:'#a78bfa'},
@@ -554,18 +838,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('suggestBtn').addEventListener('click', suggestSources);
   document.getElementById('addCompetitorBtn').addEventListener('click', addNewCompetitor);
+  document.getElementById('langToggle').addEventListener('click', () => {
+    setLang(currentLang === 'sv' ? 'en' : 'sv');
+  });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeBrief(); closeSources(); }
   });
   buildFeedTabs();
   renderCompetitorCards();
   renderTimeline();
+  document.documentElement.lang = currentLang;
   initRadar();
   initSpider();
   renderSpider();
   setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 1800);
   await refreshFeeds();
   setInterval(refreshFeeds, 5 * 60 * 1000);
+  applyTranslations();
 });
 
 /* ═══════════════════════════════════════════
@@ -573,7 +862,8 @@ window.addEventListener('DOMContentLoaded', async () => {
    ═══════════════════════════════════════════ */
 function buildFeedTabs() {
   const container = document.getElementById('feedTabs');
-  [['all','All Signals'],['competitor','Competitors'],['industry','Industry']].forEach(([key, label]) => {
+  container.replaceChildren();
+  [['all',t('allSignals')],['competitor',t('competitors')],['industry',t('industry')]].forEach(([key, label]) => {
     const btn = createEl('button', { className: 'feed-tab' + (key === 'all' ? ' active' : '') }, label);
     btn.dataset.filter = key;
     btn.addEventListener('click', () => {
@@ -628,7 +918,7 @@ function animateRadar() {
     ctx.lineTo(cx + Math.cos(angle)*maxR, cy + Math.sin(angle)*maxR);
     ctx.strokeStyle = '#0f1a2e'; ctx.lineWidth = dpr; ctx.stroke();
   }
-  const sectors = [{a:0,l:'CARRY'},{a:60,l:'BALLISTIC'},{a:120,l:'CLOTHING'},{a:180,l:'INTEGRATION'},{a:240,l:'MEDICAL'},{a:300,l:'DISTRIBUTION'}];
+  const sectors = [{a:0,l:t('carry')},{a:60,l:t('ballistic')},{a:120,l:t('clothing')},{a:180,l:t('integration')},{a:240,l:t('medical')},{a:300,l:t('distribution')}];
   ctx.font = `${10*dpr}px 'Share Tech Mono', monospace`;
   ctx.fillStyle = '#3e506a'; ctx.textAlign = 'center';
   sectors.forEach(s => {
@@ -647,7 +937,7 @@ function animateRadar() {
 
   ctx.font = `${8*dpr}px 'Share Tech Mono', monospace`;
   ctx.fillStyle = '#243554'; ctx.textAlign = 'left';
-  ['CRITICAL','HIGH','MEDIUM','LOW'].forEach((label, i) => {
+  [t('critical'),t('high').toUpperCase(),t('medium').toUpperCase(),t('low').toUpperCase()].forEach((label, i) => {
     ctx.fillText(label, cx + 6*dpr, cy - maxR*((i+1)/4) + 12*dpr);
   });
 
@@ -715,7 +1005,7 @@ function renderSpider() {
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height, cx = w/2, cy = h/2;
   const maxR = Math.min(cx, cy)*0.72;
-  const axes = Object.keys(CAPABILITY_LABELS);
+  const capLabels = getCapabilityLabels(); const axes = Object.keys(capLabels);
   const n = axes.length;
   ctx.clearRect(0, 0, w, h);
 
@@ -737,7 +1027,7 @@ function renderSpider() {
     ctx.strokeStyle='#0f1a2e'; ctx.lineWidth=dpr; ctx.stroke();
     ctx.font=`${9*dpr}px 'Share Tech Mono',monospace`; ctx.fillStyle='#7a8ba5';
     ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(CAPABILITY_LABELS[axis].toUpperCase(), cx+Math.cos(a)*(maxR+20*dpr), cy+Math.sin(a)*(maxR+20*dpr));
+    ctx.fillText(capLabels[axis].toUpperCase(), cx+Math.cos(a)*(maxR+20*dpr), cy+Math.sin(a)*(maxR+20*dpr));
   });
 
   function drawPoly(caps, color, fa) {
@@ -776,12 +1066,12 @@ function renderCompetitorCards() {
     const info = document.createElement('div');
     info.appendChild(createEl('div', {className:'card-name'}, c.name));
     info.appendChild(createEl('div', {className:'card-country'}, `${c.flag} ${c.country} \u00B7 Est. ${c.founded} \u00B7 ${c.hq}`));
-    const threat = createEl('span', {className:`card-threat threat-${c.threat}`}, `${c.threat} threat`);
+    const threat = createEl('span', {className:`card-threat threat-${c.threat}`}, t(c.threat) + ' ' + t('threatLabel'));
     top.appendChild(info); top.appendChild(threat);
 
     // Stats
     const stats = createEl('div', {className:'card-stats'});
-    [{l:'Revenue',v:c.revenue},{l:'Employees',v:c.employees}].forEach(s => {
+    [{l:t('revenue'),v:c.revenue},{l:t('employees'),v:c.employees}].forEach(s => {
       const stat = createEl('div', {className:'card-stat'});
       stat.appendChild(createEl('div', {className:'card-stat-label'}, s.l));
       stat.appendChild(createEl('div', {className:'card-stat-value'}, s.v));
@@ -795,8 +1085,8 @@ function renderCompetitorCards() {
     // Details (SWOT + timeline)
     const details = createEl('div', {className:'card-details'});
     const swotGrid = createEl('div', {className:'swot-grid'});
-    [{cls:'swot-strength',title:'Strengths',text:c.swot.s},{cls:'swot-weakness',title:'Weaknesses',text:c.swot.w},
-     {cls:'swot-opportunity',title:'Opportunities',text:c.swot.o},{cls:'swot-threat-cell',title:'Threats',text:c.swot.t}].forEach(sw => {
+    [{cls:'swot-strength',title:t('strengths'),text:c.swot.s},{cls:'swot-weakness',title:t('weaknesses'),text:c.swot.w},
+     {cls:'swot-opportunity',title:t('opportunities'),text:c.swot.o},{cls:'swot-threat-cell',title:t('threats'),text:c.swot.t}].forEach(sw => {
       const cell = createEl('div', {className:`swot-cell ${sw.cls}`});
       cell.appendChild(createEl('h4', {}, sw.title));
       cell.appendChild(createEl('div', {}, sw.text));
@@ -804,7 +1094,7 @@ function renderCompetitorCards() {
     });
     details.appendChild(swotGrid);
 
-    const evLabel = createEl('div', {style:{fontFamily:'var(--font-data)',fontSize:'0.65rem',color:'var(--text-dim)',marginBottom:'0.4rem',textTransform:'uppercase',letterSpacing:'0.1em'}}, 'Key Events');
+    const evLabel = createEl('div', {style:{fontFamily:'var(--font-data)',fontSize:'0.65rem',color:'var(--text-dim)',marginBottom:'0.4rem',textTransform:'uppercase',letterSpacing:'0.1em'}}, t('keyEvents'));
     details.appendChild(evLabel);
     const tl = createEl('div', {className:'card-timeline-mini'});
     c.timeline.forEach(e => {
@@ -819,11 +1109,11 @@ function renderCompetitorCards() {
     const signalsSection = createEl('div', {className:'card-signals'});
     signalsSection.dataset.competitorKey = key;
     const signalsHeader = createEl('div', {className:'card-signals-header'});
-    signalsHeader.appendChild(document.createTextNode('Latest Signals '));
+    signalsHeader.appendChild(document.createTextNode(t('latestSignals') + ' '));
     signalsHeader.appendChild(createEl('span', {className:'signal-count', id:'signal-count-'+key}, ''));
     signalsSection.appendChild(signalsHeader);
     const signalsList = createEl('div', {id:'card-signals-'+key});
-    signalsList.appendChild(createEl('div', {className:'card-no-signals'}, 'Click to load signals...'));
+    signalsList.appendChild(createEl('div', {className:'card-no-signals'}, t('clickLoadSignals')));
     signalsSection.appendChild(signalsList);
     details.appendChild(signalsSection);
 
@@ -853,7 +1143,7 @@ function populateCardSignals(key) {
   countEl.textContent = '(' + items.length + ')';
   container.replaceChildren();
   if (items.length === 0) {
-    container.appendChild(createEl('div', {className:'card-no-signals'}, 'No signals detected for this competitor.'));
+    container.appendChild(createEl('div', {className:'card-no-signals'}, t('noSignalsCompetitor')));
     return;
   }
   items.slice(0, 10).forEach(item => {
@@ -896,7 +1186,7 @@ function renderTimeline() {
 async function refreshFeeds() {
   const dot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
-  dot.classList.add('scanning'); statusText.textContent = 'SCANNING...';
+  dot.classList.add('scanning'); statusText.textContent = t('scanning');
   try {
     const response = await fetch('/api/feeds/all');
     if (!response.ok) throw new Error('Feed fetch failed');
@@ -904,15 +1194,15 @@ async function refreshFeeds() {
     feedData.competitors = result.competitors || {};
     feedData.industry = result.industry || [];
     const total = Object.values(feedData.competitors).reduce((s,c)=>s+(c.items?.length||0),0) + feedData.industry.length;
-    document.getElementById('feedCount').textContent = `${total} SIGNALS`;
-    document.getElementById('lastScan').textContent = `LAST SCAN: ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
+    document.getElementById('feedCount').textContent = `${total} ${t('signals')}`;
+    document.getElementById('lastScan').textContent = `${t('lastScan')} ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
     renderFeed();
   } catch(err) {
     console.warn('Feed fetch error:', err.message);
-    document.getElementById('feedItemCount').textContent = 'Server offline';
+    document.getElementById('feedItemCount').textContent = t('serverOffline');
     renderFeedOffline();
   }
-  dot.classList.remove('scanning'); statusText.textContent = 'ONLINE';
+  dot.classList.remove('scanning'); statusText.textContent = t('online');
 }
 
 function renderFeed() {
@@ -931,9 +1221,9 @@ function renderFeed() {
   }
   items.sort((a,b)=>new Date(b.pubDate)-new Date(a.pubDate));
   items = items.slice(0, 50);
-  document.getElementById('feedItemCount').textContent = `${items.length} items`;
+  document.getElementById('feedItemCount').textContent = `${items.length} ${t('items')}`;
   if (items.length === 0) {
-    list.appendChild(createEl('div', {className:'feed-empty'}, 'No signals detected in current filter.'));
+    list.appendChild(createEl('div', {className:'feed-empty'}, t('noSignalsFilter')));
     return;
   }
   items.forEach(item => {
@@ -959,10 +1249,10 @@ function renderFeedOffline() {
   list.replaceChildren();
   const empty = createEl('div', {className:'feed-empty'});
   empty.appendChild(createEl('div', {style:{fontSize:'1.5rem',marginBottom:'0.8rem',opacity:'0.4'}}, '\u2739'));
-  empty.appendChild(createEl('div', {style:{marginBottom:'0.5rem'}}, 'RSS feeds require the backend server'));
-  const cmd = createEl('div', {style:{color:'var(--accent-green)',fontFamily:'var(--font-data)',fontSize:'0.75rem'}}, 'cd snigel-radar && npm install && npm start');
+  empty.appendChild(createEl('div', {style:{marginBottom:'0.5rem'}}, t('offlineTitle')));
+  const cmd = createEl('div', {style:{color:'var(--accent-green)',fontFamily:'var(--font-data)',fontSize:'0.75rem'}}, t('offlineCmd'));
   empty.appendChild(cmd);
-  empty.appendChild(createEl('div', {style:{marginTop:'1rem',fontSize:'0.7rem',opacity:'0.6'}}, 'Radar, profiles, spider chart, and timeline work offline.'));
+  empty.appendChild(createEl('div', {style:{marginTop:'1rem',fontSize:'0.7rem',opacity:'0.6'}}, t('offlineNote')));
   list.appendChild(empty);
 }
 
@@ -970,19 +1260,19 @@ function getTimeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff/60000);
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return `${mins}${t('mAgo')}`;
   const hours = Math.floor(mins/60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return `${hours}${t('hAgo')}`;
   const days = Math.floor(hours/24);
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days}${t('dAgo')}`;
   return new Date(dateStr).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
 }
 
 function toggleView() {
   const btn = document.getElementById('viewToggle');
   const grid = document.getElementById('competitorsGrid');
-  if (grid.style.gridTemplateColumns === '1fr') { grid.style.gridTemplateColumns = ''; btn.textContent = 'GRID VIEW'; }
-  else { grid.style.gridTemplateColumns = '1fr'; btn.textContent = 'LIST VIEW'; }
+  if (grid.style.gridTemplateColumns === '1fr') { grid.style.gridTemplateColumns = ''; btn.textContent = t('gridView'); }
+  else { grid.style.gridTemplateColumns = '1fr'; btn.textContent = t('listView'); }
 }
 
 /* ═══════════════════════════════════════════
@@ -1023,13 +1313,13 @@ async function generateBrief() {
   usage.textContent = '';
 
   const spinner = createEl('div', {className:'spinner'});
-  status.replaceChildren(spinner, document.createTextNode('Generating brief...'));
+  status.replaceChildren(spinner, document.createTextNode(t('generatingBrief')));
 
   briefAbortController = new AbortController();
   let rawText = '';
 
   try {
-    const response = await fetch('/api/brief', { signal: briefAbortController.signal });
+    const response = await fetch('/api/brief?lang=' + currentLang, { signal: briefAbortController.signal });
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({ error: 'Server error' }));
@@ -1070,7 +1360,7 @@ async function generateBrief() {
           temp.className = 'brief-content';
           temp.innerHTML = rendered;
           content.replaceChildren(...temp.childNodes);
-          status.textContent = 'Complete';
+          status.textContent = t('complete');
           if (event.usage) {
             usage.textContent = `${event.usage.input_tokens} in / ${event.usage.output_tokens} out tokens`;
           }
@@ -1084,7 +1374,7 @@ async function generateBrief() {
   } catch (err) {
     if (err.name !== 'AbortError') {
       status.textContent = '';
-      content.textContent = 'Connection error: ' + err.message;
+      content.textContent = t('connectionError') + ' ' + err.message;
     }
   }
 
@@ -1100,7 +1390,7 @@ async function showBriefHistory() {
   usage.textContent = '';
 
   content.replaceChildren(createEl('div', {className:'suggest-spinner'}, [
-    createEl('div', {className:'spinner'}), document.createTextNode('Loading brief history...')
+    createEl('div', {className:'spinner'}), document.createTextNode(t('loadingHistory'))
   ]));
 
   try {
@@ -1110,11 +1400,11 @@ async function showBriefHistory() {
 
     content.replaceChildren();
     if (json.briefs.length === 0) {
-      content.appendChild(createEl('div', {className:'card-no-signals'}, 'No briefs generated yet. Click "AI BRIEF" and then "Generate" to create one.'));
+      content.appendChild(createEl('div', {className:'card-no-signals'}, t('noBriefs')));
       return;
     }
 
-    const header = createEl('div', {style:{fontFamily:'var(--font-data)',fontSize:'0.7rem',color:'var(--text-dim)',marginBottom:'0.8rem',textTransform:'uppercase',letterSpacing:'0.1em'}}, json.briefs.length + ' saved briefs — click to view');
+    const header = createEl('div', {style:{fontFamily:'var(--font-data)',fontSize:'0.7rem',color:'var(--text-dim)',marginBottom:'0.8rem',textTransform:'uppercase',letterSpacing:'0.1em'}}, json.briefs.length + ' ' + t('savedBriefs'));
     content.appendChild(header);
 
     const list = createEl('div', {className:'brief-history-list'});
@@ -1131,7 +1421,7 @@ async function showBriefHistory() {
     });
     content.appendChild(list);
   } catch (err) {
-    content.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, 'Error: ' + err.message));
+    content.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, t('errorPrefix') + ' ' + err.message));
   }
 }
 
@@ -1141,7 +1431,7 @@ async function loadBrief(id) {
   const usage = document.getElementById('briefUsage');
 
   content.replaceChildren(createEl('div', {className:'suggest-spinner'}, [
-    createEl('div', {className:'spinner'}), document.createTextNode('Loading...')
+    createEl('div', {className:'spinner'}), document.createTextNode(t('loadingText'))
   ]));
 
   try {
@@ -1156,12 +1446,12 @@ async function loadBrief(id) {
     content.replaceChildren(...temp.childNodes);
 
     const date = new Date(json.brief.timestamp);
-    status.textContent = 'Brief from ' + date.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+    status.textContent = t('briefFrom') + ' ' + date.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
     if (json.brief.usage) {
       usage.textContent = json.brief.usage.input_tokens + ' in / ' + json.brief.usage.output_tokens + ' out tokens';
     }
   } catch (err) {
-    content.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',fontFamily:'var(--font-data)'}}, 'Error loading brief: ' + err.message));
+    content.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',fontFamily:'var(--font-data)'}}, t('errorPrefix') + ' ' + err.message));
   }
 }
 
@@ -1179,7 +1469,7 @@ async function openSources() {
   const body = document.getElementById('sourcesBody');
   overlay.classList.add('visible');
   body.replaceChildren(createEl('div', {className:'suggest-spinner'}, [
-    createEl('div', {className:'spinner'}), document.createTextNode('Loading sources...')
+    createEl('div', {className:'spinner'}), document.createTextNode(t('loadingSources'))
   ]));
 
   try {
@@ -1189,7 +1479,7 @@ async function openSources() {
     sourcesData = json.sources;
     renderSources();
   } catch (err) {
-    body.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, 'Failed to load sources: ' + err.message));
+    body.replaceChildren(createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, t('failedLoadSources') + ' ' + err.message));
   }
 }
 
@@ -1200,8 +1490,8 @@ function renderSources() {
   // Competitor section
   const compSection = createEl('div', {className:'sources-section'});
   const compHeader = createEl('div', {className:'sources-section-header'});
-  compHeader.appendChild(createEl('div', {className:'sources-section-title'}, 'Competitor Feeds'));
-  compHeader.appendChild(createEl('div', {className:'sources-count'}, Object.keys(sourcesData.competitors).length + ' competitors'));
+  compHeader.appendChild(createEl('div', {className:'sources-section-title'}, t('competitorFeeds')));
+  compHeader.appendChild(createEl('div', {className:'sources-count'}, Object.keys(sourcesData.competitors).length + ' ' + t('competitors')));
   compSection.appendChild(compHeader);
 
   Object.entries(sourcesData.competitors).forEach(([key, comp]) => {
@@ -1209,11 +1499,11 @@ function renderSources() {
     const header = createEl('div', {className:'source-group-header'});
     const nameDiv = document.createElement('div');
     nameDiv.appendChild(createEl('span', {className:'source-group-name'}, comp.name));
-    nameDiv.appendChild(createEl('span', {className:'source-group-meta'}, '  ' + comp.feeds.length + ' feeds \u00B7 ' + key));
+    nameDiv.appendChild(createEl('span', {className:'source-group-meta'}, '  ' + comp.feeds.length + ' ' + t('feeds') + ' \u00B7 ' + key));
     header.appendChild(nameDiv);
 
     const actions = createEl('div', {className:'source-group-actions'});
-    const delBtn = createEl('button', {className:'source-btn danger'}, 'DELETE');
+    const delBtn = createEl('button', {className:'source-btn danger'}, t('delete'));
     delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteCompetitor(key, comp.name); });
     actions.appendChild(delBtn);
     header.appendChild(actions);
@@ -1232,8 +1522,8 @@ function renderSources() {
 
     // Add feed row
     const addRow = createEl('div', {className:'source-add-row'});
-    const input = createEl('input', {className:'source-input', type:'text', placeholder:'Add RSS feed URL...'});
-    const addBtn = createEl('button', {className:'source-btn primary'}, '+ ADD');
+    const input = createEl('input', {className:'source-input', type:'text', placeholder:t('addRssUrl')});
+    const addBtn = createEl('button', {className:'source-btn primary'}, t('addBtn'));
     addBtn.addEventListener('click', () => { if (input.value.trim()) addFeedToCompetitor(key, input.value.trim()); });
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) addFeedToCompetitor(key, input.value.trim()); });
     addRow.appendChild(input);
@@ -1249,8 +1539,8 @@ function renderSources() {
   // Industry section
   const indSection = createEl('div', {className:'sources-section'});
   const indHeader = createEl('div', {className:'sources-section-header'});
-  indHeader.appendChild(createEl('div', {className:'sources-section-title'}, 'Industry Feeds'));
-  indHeader.appendChild(createEl('div', {className:'sources-count'}, sourcesData.industry.length + ' feeds'));
+  indHeader.appendChild(createEl('div', {className:'sources-section-title'}, t('industryFeeds')));
+  indHeader.appendChild(createEl('div', {className:'sources-count'}, sourcesData.industry.length + ' ' + t('feeds')));
   indSection.appendChild(indHeader);
 
   sourcesData.industry.forEach((url, idx) => {
@@ -1263,8 +1553,8 @@ function renderSources() {
   });
 
   const addRow = createEl('div', {className:'source-add-row', style:{padding:'0.6rem 0'}});
-  const input = createEl('input', {className:'source-input', type:'text', placeholder:'Add industry RSS feed URL...'});
-  const addBtn = createEl('button', {className:'source-btn primary'}, '+ ADD');
+  const input = createEl('input', {className:'source-input', type:'text', placeholder:t('addIndustryUrl')});
+  const addBtn = createEl('button', {className:'source-btn primary'}, t('addBtn'));
   addBtn.addEventListener('click', () => { if (input.value.trim()) addIndustryFeed(input.value.trim()); });
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter' && input.value.trim()) addIndustryFeed(input.value.trim()); });
   addRow.appendChild(input);
@@ -1279,74 +1569,74 @@ function renderSources() {
 }
 
 async function deleteCompetitor(key, name) {
-  if (!confirm('Remove ' + name + ' and all its feeds?')) return;
-  setSourcesStatus('Removing...');
+  if (!confirm(t('removeConfirm').replace('{name}', name))) return;
+  setSourcesStatus(t('removing'));
   try {
     const res = await fetch('/api/sources/competitor/' + encodeURIComponent(key), { method: 'DELETE' });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     delete sourcesData.competitors[key];
     renderSources();
-    setSourcesStatus('Removed ' + name);
-  } catch (err) { setSourcesStatus('Error: ' + err.message); }
+    setSourcesStatus(t('removed') + ' ' + name);
+  } catch (err) { setSourcesStatus(t('errorPrefix') + ' ' + err.message); }
 }
 
 async function removeFeed(compKey, feedIdx) {
   sourcesData.competitors[compKey].feeds.splice(feedIdx, 1);
-  setSourcesStatus('Saving...');
+  setSourcesStatus(t('saving'));
   try {
     const res = await fetch('/api/sources', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(sourcesData) });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     renderSources();
-    setSourcesStatus('Feed removed');
-  } catch (err) { setSourcesStatus('Error: ' + err.message); }
+    setSourcesStatus(t('feedRemoved'));
+  } catch (err) { setSourcesStatus(t('errorPrefix') + ' ' + err.message); }
 }
 
 async function addFeedToCompetitor(compKey, url) {
   sourcesData.competitors[compKey].feeds.push(url);
-  setSourcesStatus('Saving...');
+  setSourcesStatus(t('saving'));
   try {
     const res = await fetch('/api/sources', { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(sourcesData) });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     renderSources();
-    setSourcesStatus('Feed added');
-  } catch (err) { setSourcesStatus('Error: ' + err.message); }
+    setSourcesStatus(t('feedAdded'));
+  } catch (err) { setSourcesStatus(t('errorPrefix') + ' ' + err.message); }
 }
 
 async function addIndustryFeed(url) {
-  setSourcesStatus('Adding...');
+  setSourcesStatus(t('adding'));
   try {
     const res = await fetch('/api/sources/add-industry', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url }) });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     sourcesData.industry.push(url);
     renderSources();
-    setSourcesStatus('Industry feed added');
-  } catch (err) { setSourcesStatus('Error: ' + err.message); }
+    setSourcesStatus(t('feedAdded'));
+  } catch (err) { setSourcesStatus(t('errorPrefix') + ' ' + err.message); }
 }
 
 async function removeIndustryFeed(url) {
-  setSourcesStatus('Removing...');
+  setSourcesStatus(t('removing'));
   try {
     const res = await fetch('/api/sources/industry', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ url }) });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error);
     sourcesData.industry = sourcesData.industry.filter(u => u !== url);
     renderSources();
-    setSourcesStatus('Industry feed removed');
-  } catch (err) { setSourcesStatus('Error: ' + err.message); }
+    setSourcesStatus(t('industryFeedRemoved'));
+  } catch (err) { setSourcesStatus(t('errorPrefix') + ' ' + err.message); }
 }
 
 function addNewCompetitor() {
-  const name = prompt('Competitor display name (e.g. "Arktis Ltd"):');
+  const name = prompt(t('competitorNamePrompt'));
   if (!name) return;
   const key = name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_');
-  const feedUrl = prompt('First RSS feed URL (you can add more later):');
+  const feedUrl = prompt(t('firstFeedPrompt'));
   if (!feedUrl) return;
 
-  setSourcesStatus('Adding...');
+  setSourcesStatus(t('adding'));
   fetch('/api/sources/add-competitor', {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
@@ -1355,31 +1645,31 @@ function addNewCompetitor() {
     if (!json.ok) throw new Error(json.error);
     sourcesData.competitors[json.key] = { name, feeds: [feedUrl] };
     renderSources();
-    setSourcesStatus('Added ' + name);
-  }).catch(err => setSourcesStatus('Error: ' + err.message));
+    setSourcesStatus(t('added') + ' ' + name);
+  }).catch(err => setSourcesStatus(t('errorPrefix') + ' ' + err.message));
 }
 
 async function suggestSources() {
   const section = document.getElementById('suggestSection');
   section.replaceChildren(
     createEl('div', {className:'sources-section-header'}, [
-      createEl('div', {className:'sources-section-title', style:{color:'var(--accent-purple)'}}, 'AI Suggestions')
+      createEl('div', {className:'sources-section-title', style:{color:'var(--accent-purple)'}}, t('aiSuggestions'))
     ]),
     createEl('div', {className:'suggest-spinner'}, [
       createEl('div', {className:'spinner', style:{borderTopColor:'var(--accent-purple)'}}),
-      document.createTextNode('Analyzing coverage gaps with Sonnet 4.5...')
+      document.createTextNode(t('analyzingGaps'))
     ])
   );
 
   try {
-    const res = await fetch('/api/sources/suggest', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const res = await fetch('/api/sources/suggest', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ lang: currentLang }) });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'AI suggestion failed');
 
     section.replaceChildren(
       createEl('div', {className:'sources-section-header'}, [
-        createEl('div', {className:'sources-section-title', style:{color:'var(--accent-purple)'}}, 'AI Suggestions'),
-        createEl('div', {className:'sources-count'}, json.suggestions.length + ' suggestions \u00B7 ' + (json.usage?.input_tokens || 0) + '/' + (json.usage?.output_tokens || 0) + ' tokens')
+        createEl('div', {className:'sources-section-title', style:{color:'var(--accent-purple)'}}, t('aiSuggestions')),
+        createEl('div', {className:'sources-count'}, json.suggestions.length + ' ' + t('suggestions') + ' \u00B7 ' + (json.usage?.input_tokens || 0) + '/' + (json.usage?.output_tokens || 0) + ' ' + t('tokens'))
       ])
     );
 
@@ -1393,7 +1683,7 @@ async function suggestSources() {
       body.appendChild(createEl('div', {className:'suggest-item-reason'}, s.reason));
 
       const actions = createEl('div', {className:'suggest-item-actions'});
-      const acceptBtn = createEl('button', {className:'source-btn primary'}, 'ACCEPT');
+      const acceptBtn = createEl('button', {className:'source-btn primary'}, t('accept'));
       acceptBtn.addEventListener('click', () => acceptSuggestion(s, acceptBtn));
       actions.appendChild(acceptBtn);
       item.appendChild(body);
@@ -1403,7 +1693,7 @@ async function suggestSources() {
     section.appendChild(list);
   } catch (err) {
     section.replaceChildren(
-      createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, 'Suggestion error: ' + err.message)
+      createEl('div', {style:{color:'var(--accent-red)',padding:'1rem',fontFamily:'var(--font-data)'}}, t('suggestionError') + ' ' + err.message)
     );
   }
 }
@@ -1433,13 +1723,13 @@ async function acceptSuggestion(suggestion, btn) {
       });
       sourcesData.industry.push(suggestion.url);
     }
-    btn.textContent = 'ADDED';
+    btn.textContent = t('addedStatus');
     btn.style.borderColor = 'var(--accent-green)';
     btn.style.color = 'var(--accent-green)';
     renderSources();
-    setSourcesStatus('Source accepted');
+    setSourcesStatus(t('sourceAccepted'));
   } catch (err) {
-    btn.textContent = 'ERROR';
+    btn.textContent = t('errorStatus');
     btn.style.color = 'var(--accent-red)';
   }
 }

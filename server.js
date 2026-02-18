@@ -415,12 +415,16 @@ app.post('/api/sources/suggest', async (req, res) => {
   }
 
   try {
+    const lang = req.body.lang || 'en';
+
     const currentCompetitors = Object.entries(sources.competitors)
       .map(([key, c]) => `- ${c.name} (${key}): ${c.feeds.length} feeds`)
       .join('\n');
     const currentIndustry = sources.industry
       .map((u, i) => `- Feed ${i + 1}: ${u}`)
       .join('\n');
+
+    const suggestLanguageInstruction = lang === 'sv' ? '\n\nRespond in Swedish.' : '';
 
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
@@ -431,7 +435,7 @@ app.post('/api/sources/suggest', async (req, res) => {
 You know that Google News RSS works with this format:
 https://news.google.com/rss/search?q=SEARCH_QUERY&hl=LANG&gl=COUNTRY&ceid=COUNTRY:LANG
 
-URL-encode search terms. Use quotes (%22) for exact matches. Use OR for alternatives. Common languages: en, sv, de, no, fi, da, fr.`,
+URL-encode search terms. Use quotes (%22) for exact matches. Use OR for alternatives. Common languages: en, sv, de, no, fi, da, fr.${suggestLanguageInstruction}`,
       messages: [{
         role: 'user',
         content: `Here are the current sources being monitored:
@@ -522,10 +526,16 @@ app.get('/api/brief', async (req, res) => {
 
     const signalDigest = signalLines.join('\n');
 
+    const lang = req.query.lang || 'en';
+
     const previousBriefs = getRecentBriefSummaries(3);
     const continuityContext = previousBriefs
       ? `\n\nPREVIOUS INTELLIGENCE BRIEFS (for continuity - reference changes since last brief, highlight new developments):\n${previousBriefs}\n`
       : '';
+
+    const languageInstruction = lang === 'sv'
+      ? 'Write the brief in Swedish (svenska). Use Swedish terminology for defense/military concepts.'
+      : 'Write in English.';
 
     const systemPrompt = `You are a competitive intelligence analyst for Snigel Design AB, a Swedish company (est. 1990, ~365 MSEK revenue, ~25 employees, HQ Farsta) that makes modular tactical carry systems, ballistic vests/plate carriers, and tactical clothing for military and law enforcement. Key products include the Squeeze plate carrier system and Spoon ergonomic load-bearing system. In March 2025, eEquity invested ~50% stake to drive international growth toward 1 BnSEK.
 
@@ -540,7 +550,23 @@ Snigel's primary competitors are:
 - Equipnor AB (Sweden, NFM Group subsidiary) — system integrator for Swedish defense. LOW THREAT.
 - PTD Group (Denmark) — defense system integrator, C4ISR. LOW THREAT.
 
-Your role is to produce a concise, executive-level competitive intelligence brief from the latest signals. Write in English. Be specific, actionable, and focused on implications for Snigel.`;
+Your role is to produce a concise, executive-level competitive intelligence brief from the latest signals. ${languageInstruction} Be specific, actionable, and focused on implications for Snigel.`;
+
+    const sectionHeaders = lang === 'sv'
+      ? {
+          priority: 'PRIORITERADE VARNINGAR',
+          competitor: 'KONKURRENTRÖRELSER',
+          market: 'MARKNADS- & REGULATORISKA SIGNALER',
+          strategic: 'STRATEGISKA IMPLIKATIONER FÖR SNIGEL',
+          quality: 'SIGNALKVALITETSNOTERING',
+        }
+      : {
+          priority: 'PRIORITY ALERTS',
+          competitor: 'COMPETITOR MOVEMENTS',
+          market: 'MARKET & REGULATORY SIGNALS',
+          strategic: 'STRATEGIC IMPLICATIONS FOR SNIGEL',
+          quality: 'SIGNAL QUALITY NOTE',
+        };
 
     const userPrompt = `Here are the latest ${signalLines.length} intelligence signals collected from RSS feeds (today is ${new Date().toISOString().split('T')[0]}):
 
@@ -548,19 +574,19 @@ ${signalDigest}
 ${continuityContext}
 Based on these signals, produce a COMPETITIVE INTELLIGENCE BRIEF with these sections:
 
-## PRIORITY ALERTS
+## ${sectionHeaders.priority}
 Signals that require immediate attention from Snigel leadership (competitive moves, lost/won contracts, M&A that changes the landscape).
 
-## COMPETITOR MOVEMENTS
+## ${sectionHeaders.competitor}
 Summary of what each active competitor is doing, grouped by company. Only include competitors with actual signals.
 
-## MARKET & REGULATORY SIGNALS
+## ${sectionHeaders.market}
 Broader European defense/procurement trends that affect Snigel's business.
 
-## STRATEGIC IMPLICATIONS FOR SNIGEL
+## ${sectionHeaders.strategic}
 2-3 concrete, actionable recommendations based on this intelligence cycle.
 
-## SIGNAL QUALITY NOTE
+## ${sectionHeaders.quality}
 Brief note on signal coverage gaps or areas where more intelligence is needed.
 
 Keep it concise but substantive. If previous briefs are provided, explicitly note what has CHANGED since the last assessment and highlight NEW developments. Each section should be 3-6 bullet points max. Use markdown formatting.`;
