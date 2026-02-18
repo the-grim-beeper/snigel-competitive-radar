@@ -182,6 +182,32 @@ body::after {
 .loading-text { font-family: var(--font-data); font-size: 0.8rem; color: var(--accent-green); letter-spacing: 0.3em; text-transform: uppercase; animation: blink-text 1.5s step-end infinite; }
 @keyframes blink-text { 50% { opacity: 0; } }
 
+/* Brief Modal */
+.brief-overlay { position: fixed; inset: 0; background: #000000cc; z-index: 200; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.brief-overlay.visible { display: flex; }
+.brief-modal { background: var(--bg-panel); border: 1px solid var(--border-bright); border-radius: 6px; width: 90%; max-width: 820px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px #000000aa, 0 0 40px var(--accent-green-dim); }
+.brief-header { display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border); }
+.brief-header-left { display: flex; align-items: center; gap: 0.8rem; }
+.brief-header h2 { font-family: var(--font-display); font-weight: 600; font-size: 1rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-primary); }
+.brief-model-tag { font-family: var(--font-data); font-size: 0.6rem; padding: 0.2rem 0.5rem; border-radius: 2px; background: var(--accent-green-dim); color: var(--accent-green); border: 1px solid var(--accent-green); letter-spacing: 0.05em; }
+.brief-close { background: none; border: 1px solid var(--border); color: var(--text-dim); font-family: var(--font-data); font-size: 0.8rem; padding: 0.3rem 0.8rem; border-radius: 3px; cursor: pointer; transition: all 0.2s; }
+.brief-close:hover { border-color: var(--accent-red); color: var(--accent-red); }
+.brief-body { flex: 1; overflow-y: auto; padding: 1.5rem; }
+.brief-content { font-family: var(--font-body); font-size: 0.9rem; line-height: 1.7; color: var(--text-primary); }
+.brief-content h2 { font-family: var(--font-display); font-weight: 600; font-size: 1rem; letter-spacing: 0.1em; color: var(--accent-green); margin: 1.5rem 0 0.6rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border); }
+.brief-content h2:first-child { margin-top: 0; }
+.brief-content ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+.brief-content li { margin-bottom: 0.4rem; color: var(--text-secondary); }
+.brief-content strong { color: var(--text-primary); font-weight: 600; }
+.brief-content p { margin: 0.5rem 0; color: var(--text-secondary); }
+.brief-cursor { display: inline-block; width: 2px; height: 1em; background: var(--accent-green); margin-left: 2px; vertical-align: text-bottom; animation: blink-text 0.8s step-end infinite; }
+.brief-footer { padding: 0.8rem 1.5rem; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.brief-usage { font-family: var(--font-data); font-size: 0.65rem; color: var(--text-dim); }
+.brief-status { font-family: var(--font-data); font-size: 0.7rem; color: var(--accent-green); display: flex; align-items: center; gap: 0.4rem; }
+.brief-status .spinner { width: 12px; height: 12px; border: 1.5px solid var(--border); border-top-color: var(--accent-green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.btn-brief { background: linear-gradient(135deg, var(--accent-green-dim), #00e5a011); border-color: var(--accent-green); color: var(--accent-green); }
+.btn-brief:hover { background: var(--accent-green); color: var(--bg-deepest); box-shadow: 0 0 20px var(--accent-green-dim); }
+
 @media (max-width: 1100px) {
   .main { grid-template-columns: 1fr; }
   .radar-panel, .feed-panel, .competitors-panel, .spider-panel, .timeline-panel { grid-column: 1; }
@@ -224,6 +250,7 @@ body::after {
     </div>
   </div>
   <div class="header-actions">
+    <button class="btn btn-brief" id="briefBtn">AI BRIEF</button>
     <button class="btn" id="scanBtn">SCAN NOW</button>
     <button class="btn" id="viewToggle">GRID VIEW</button>
   </div>
@@ -272,6 +299,26 @@ body::after {
     <div class="timeline-list" id="timelineList"></div>
   </section>
 </main>
+
+<!-- Brief Modal -->
+<div class="brief-overlay" id="briefOverlay">
+  <div class="brief-modal">
+    <div class="brief-header">
+      <div class="brief-header-left">
+        <h2>Intelligence Brief</h2>
+        <span class="brief-model-tag">OPUS 4.6</span>
+      </div>
+      <button class="brief-close" id="briefClose">ESC</button>
+    </div>
+    <div class="brief-body">
+      <div class="brief-content" id="briefContent"></div>
+    </div>
+    <div class="brief-footer">
+      <div class="brief-status" id="briefStatus"></div>
+      <div class="brief-usage" id="briefUsage"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ═══════════════════════════════════════════
@@ -379,6 +426,14 @@ let radarAngle = 0;
 window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scanBtn').addEventListener('click', refreshFeeds);
   document.getElementById('viewToggle').addEventListener('click', toggleView);
+  document.getElementById('briefBtn').addEventListener('click', generateBrief);
+  document.getElementById('briefClose').addEventListener('click', closeBrief);
+  document.getElementById('briefOverlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeBrief();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeBrief();
+  });
   buildFeedTabs();
   renderCompetitorCards();
   renderTimeline();
@@ -758,6 +813,112 @@ function toggleView() {
   const grid = document.getElementById('competitorsGrid');
   if (grid.style.gridTemplateColumns === '1fr') { grid.style.gridTemplateColumns = ''; btn.textContent = 'GRID VIEW'; }
   else { grid.style.gridTemplateColumns = '1fr'; btn.textContent = 'LIST VIEW'; }
+}
+
+/* ═══════════════════════════════════════════
+   AI BRIEF (streaming from Opus 4.6)
+   ═══════════════════════════════════════════ */
+let briefAbortController = null;
+
+function closeBrief() {
+  document.getElementById('briefOverlay').classList.remove('visible');
+  if (briefAbortController) { briefAbortController.abort(); briefAbortController = null; }
+}
+
+function markdownToHtml(md) {
+  // Simple markdown to safe HTML (no innerHTML with user content - only our AI output)
+  return md
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^\- \*\*(.+?)\*\*:?\s*/gm, '<li><strong>$1</strong> ')
+    .replace(/^\- (.+)$/gm, '<li>$1</li>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/<\/li>\s*<li>/g, '</li><li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, (match) => {
+      if (!match.startsWith('<ul>')) return '<ul>' + match + '</ul>';
+      return match;
+    })
+    .replace(/<\/ul>\s*<ul>/g, '');
+}
+
+async function generateBrief() {
+  const overlay = document.getElementById('briefOverlay');
+  const content = document.getElementById('briefContent');
+  const status = document.getElementById('briefStatus');
+  const usage = document.getElementById('briefUsage');
+
+  overlay.classList.add('visible');
+  content.textContent = '';
+  usage.textContent = '';
+
+  const spinner = createEl('div', {className:'spinner'});
+  status.replaceChildren(spinner, document.createTextNode('Generating brief...'));
+
+  briefAbortController = new AbortController();
+  let rawText = '';
+
+  try {
+    const response = await fetch('/api/brief', { signal: briefAbortController.signal });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: 'Server error' }));
+      content.textContent = err.error || 'Failed to generate brief. Is ANTHROPIC_API_KEY set?';
+      status.textContent = '';
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const json = line.slice(6);
+        let event;
+        try { event = JSON.parse(json); } catch { continue; }
+
+        if (event.type === 'delta') {
+          rawText += event.text;
+          // Render markdown as we go - use a safe container
+          const rendered = markdownToHtml(rawText);
+          // Create a safe rendering container
+          const temp = document.createElement('div');
+          temp.className = 'brief-content';
+          temp.innerHTML = rendered + '<span class="brief-cursor"></span>';
+          content.replaceChildren(...temp.childNodes);
+        } else if (event.type === 'done') {
+          // Final render without cursor
+          const rendered = markdownToHtml(rawText);
+          const temp = document.createElement('div');
+          temp.className = 'brief-content';
+          temp.innerHTML = rendered;
+          content.replaceChildren(...temp.childNodes);
+          status.textContent = 'Complete';
+          if (event.usage) {
+            usage.textContent = `${event.usage.input_tokens} in / ${event.usage.output_tokens} out tokens`;
+          }
+        } else if (event.type === 'error') {
+          status.textContent = '';
+          const errEl = createEl('div', {style:{color:'var(--accent-red)',marginTop:'1rem'}}, event.error);
+          content.appendChild(errEl);
+        }
+      }
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      status.textContent = '';
+      content.textContent = 'Connection error: ' + err.message;
+    }
+  }
+
+  briefAbortController = null;
 }
 
 let resizeTimer;
