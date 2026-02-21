@@ -1,8 +1,9 @@
 const express = require('express');
-const RSSParser = require('rss-parser');
 const Anthropic = require('@anthropic-ai/sdk');
 const path = require('path');
 const fs = require('fs');
+const feedService = require('./src/services/feedService');
+const classificationService = require('./src/services/classificationService');
 
 const app = express();
 app.use(express.json());
@@ -53,21 +54,12 @@ button:hover{background:rgba(0,255,136,.2);border-color:rgba(0,255,136,.5)}
   });
 }
 
-const parser = new RSSParser({
-  timeout: 10000,
-  headers: {
-    'User-Agent': 'SnigelRadar/1.0 (Competitive Intelligence)',
-    Accept: 'application/rss+xml, application/xml, text/xml',
-  },
-});
-
 const PORT = process.env.PORT || 3000;
-const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
+const CACHE_TTL = 15 * 60 * 1000; // 15 minutes (used for radar cache)
 const SOURCES_FILE = path.join(__dirname, 'data', 'sources.json');
 const AI_MODEL = 'claude-sonnet-4-5-20250929';
 const BRIEFS_DIR = path.join(__dirname, 'data', 'briefs');
 const PROFILES_FILE = path.join(__dirname, 'data', 'profiles.json');
-const RADAR_CHUNK_SIZE = 40;
 
 // --- Default feed sources (used if sources.json doesn't exist) ---
 const DEFAULT_SOURCES = {
@@ -198,10 +190,6 @@ function saveProfiles(profiles) {
   fs.writeFileSync(PROFILES_FILE, JSON.stringify(profiles, null, 2));
 }
 
-// Convenience accessors (so existing fetch code works unchanged)
-function getCompetitorFeeds() { return sources.competitors; }
-function getIndustryFeeds() { return sources.industry; }
-
 // --- Brief persistence ---
 function ensureBriefsDir() {
   if (!fs.existsSync(BRIEFS_DIR)) fs.mkdirSync(BRIEFS_DIR, { recursive: true });
@@ -243,199 +231,13 @@ function getRecentBriefSummaries(count = 3) {
   }).join('\n\n');
 }
 
-// --- Cache ---
+// --- Radar cache (feed caches are managed by feedService) ---
 const cache = {
-  competitors: { data: null, timestamp: 0 },
-  industry: { data: null, timestamp: 0 },
   radar: { data: null, timestamp: 0 },
 };
 
-function isCacheValid(key) {
-  return cache[key].data && Date.now() - cache[key].timestamp < CACHE_TTL;
-}
-
-// --- Feed fetching ---
-async function fetchFeed(url) {
-  try {
-    const feed = await parser.parseURL(url);
-    return feed.items.map((item) => ({
-      title: item.title || '',
-      link: item.link || '',
-      pubDate: item.pubDate || item.isoDate || '',
-      source: item.creator || item.source || feed.title || '',
-      snippet:
-        (item.contentSnippet || item.content || '').substring(0, 300) || '',
-    }));
-  } catch (err) {
-    console.error(`Feed error [${url.substring(0, 80)}...]: ${err.message}`);
-    return [];
-  }
-}
-
-async function fetchCompetitorFeeds() {
-  if (isCacheValid('competitors')) return cache.competitors.data;
-
-  console.log('[SCAN] Fetching competitor feeds...');
-  const results = {};
-
-  const entries = Object.entries(getCompetitorFeeds());
-  for (const [key, config] of entries) {
-    const allItems = [];
-    for (const feedUrl of config.feeds) {
-      const items = await fetchFeed(feedUrl);
-      allItems.push(...items);
-    }
-
-    // Deduplicate by title similarity
-    const seen = new Set();
-    const unique = allItems.filter((item) => {
-      const normalized = item.title.toLowerCase().substring(0, 60);
-      if (seen.has(normalized)) return false;
-      seen.add(normalized);
-      return true;
-    });
-
-    // Sort by date, most recent first
-    unique.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-
-    results[key] = {
-      name: config.name,
-      items: unique.slice(0, 15), // Keep top 15 per competitor
-    };
-  }
-
-  cache.competitors = { data: results, timestamp: Date.now() };
-  console.log(
-    `[SCAN] Complete. Found items for ${Object.keys(results).length} competitors.`
-  );
-  return results;
-}
-
-async function fetchIndustryFeeds() {
-  if (isCacheValid('industry')) return cache.industry.data;
-
-  console.log('[SCAN] Fetching industry feeds...');
-  const allItems = [];
-
-  for (const feedUrl of getIndustryFeeds()) {
-    const items = await fetchFeed(feedUrl);
-    allItems.push(...items);
-  }
-
-  const seen = new Set();
-  const unique = allItems.filter((item) => {
-    const normalized = item.title.toLowerCase().substring(0, 60);
-    if (seen.has(normalized)) return false;
-    seen.add(normalized);
-    return true;
-  });
-
-  unique.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-  const result = unique.slice(0, 30);
-
-  cache.industry = { data: result, timestamp: Date.now() };
-  console.log(`[SCAN] Industry feed: ${result.length} items.`);
-  return result;
-}
-
-// --- Radar classification ---
-async function classifyRadarItems(allItems) {
-  // Fallback if no API key
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return allItems.map((item) => ({
-      title: item.title || '',
-      link: item.link || '',
-      pubDate: item.pubDate || '',
-      source: item.source || '',
-      quadrant: item._sourceType === 'competitor' ? 'competitors' : 'industry',
-      relevance: 5,
-      label: (item.title || '').substring(0, 40),
-    }));
-  }
-
-  // Chunk items
-  const chunks = [];
-  for (let i = 0; i < allItems.length; i += RADAR_CHUNK_SIZE) {
-    chunks.push(allItems.slice(i, i + RADAR_CHUNK_SIZE));
-  }
-
-  const anthropic = new Anthropic();
-  const classifiedItems = [];
-
-  // Process chunks in parallel
-  const chunkResults = await Promise.all(chunks.map(async (chunk, chunkIdx) => {
-    const itemsForPrompt = chunk.map((item, i) => ({
-      index: i,
-      title: item.title,
-      snippet: (item.snippet || '').substring(0, 150),
-      source: item.source || '',
-      sourceType: item._sourceType || 'unknown',
-    }));
-
-    try {
-      const response = await anthropic.messages.create({
-        model: AI_MODEL,
-        max_tokens: 2048,
-        system: `You are a competitive intelligence classifier for Snigel Design AB (Swedish tactical gear manufacturer). Classify news items into exactly one of four quadrants and score their relevance.
-
-Quadrants:
-- "competitors": News about specific competitor companies (NFM, Mehler, Lindnerhof, Savotta, Sacci, Taiga, Tasmanian Tiger, UF PRO, Equipnor, PTD, or any tactical gear competitor)
-- "industry": Defense industry events, procurement, trade shows, regulation, military modernization programs
-- "snigel": News directly mentioning or relevant to Snigel Design AB
-- "anomalies": Unusual signals, cross-cutting trends, or items that don't fit the above but could be strategically important
-
-Relevance scoring (integer 1-10):
-- 10 = directly actionable for Snigel leadership (competitor M&A, lost/won contract, direct mention)
-- 7-9 = highly relevant (competitor product launch, major procurement, industry shift)
-- 4-6 = moderately relevant (general defense news, tangential industry event)
-- 1-3 = low relevance (peripheral news, weak connection)
-
-Return ONLY a raw JSON array, no markdown fences. Each element:
-{"index": 0, "quadrant": "competitors", "relevance": 7, "label": "Short 3-6 word label"}`,
-        messages: [{
-          role: 'user',
-          content: `Classify these ${chunk.length} news items:\n\n${JSON.stringify(itemsForPrompt, null, 1)}`,
-        }],
-      });
-
-      const text = response.content[0].text.trim();
-      const cleaned = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
-      return { chunkIdx, classifications: JSON.parse(cleaned) };
-    } catch (err) {
-      console.error(`[RADAR] Classification error (chunk ${chunkIdx}):`, err.message);
-      // Fallback for failed chunk
-      return {
-        chunkIdx,
-        classifications: chunk.map((item, i) => ({
-          index: i,
-          quadrant: item._sourceType === 'competitor' ? 'competitors' : 'industry',
-          relevance: 5,
-          label: (item.title || '').substring(0, 40),
-        })),
-      };
-    }
-  }));
-
-  // Merge results back in order
-  chunkResults.sort((a, b) => a.chunkIdx - b.chunkIdx);
-  chunkResults.forEach(({ chunkIdx, classifications }) => {
-    const chunk = chunks[chunkIdx];
-    classifications.forEach((cl) => {
-      const item = chunk[cl.index];
-      if (!item) return;
-      classifiedItems.push({
-        title: item.title,
-        link: item.link,
-        pubDate: item.pubDate,
-        source: item.source,
-        quadrant: cl.quadrant,
-        relevance: Math.max(1, Math.min(10, Math.round(cl.relevance) || 5)),
-        label: cl.label || (item.title || '').substring(0, 40),
-      });
-    });
-  });
-
-  return classifiedItems;
+function isRadarCacheValid() {
+  return cache.radar.data && Date.now() - cache.radar.timestamp < CACHE_TTL;
 }
 
 // --- Express routes ---
@@ -443,10 +245,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/feeds/competitors', async (req, res) => {
   try {
-    const data = await fetchCompetitorFeeds();
+    const data = await feedService.fetchCompetitorFeeds(loadSources());
     res.json({
       ok: true,
-      timestamp: cache.competitors.timestamp,
+      timestamp: Date.now(),
       data,
     });
   } catch (err) {
@@ -457,10 +259,10 @@ app.get('/api/feeds/competitors', async (req, res) => {
 
 app.get('/api/feeds/industry', async (req, res) => {
   try {
-    const data = await fetchIndustryFeeds();
+    const data = await feedService.fetchIndustryFeeds(loadSources());
     res.json({
       ok: true,
-      timestamp: cache.industry.timestamp,
+      timestamp: Date.now(),
       data,
     });
   } catch (err) {
@@ -471,9 +273,10 @@ app.get('/api/feeds/industry', async (req, res) => {
 
 app.get('/api/feeds/all', async (req, res) => {
   try {
+    const src = loadSources();
     const [competitors, industry] = await Promise.all([
-      fetchCompetitorFeeds(),
-      fetchIndustryFeeds(),
+      feedService.fetchCompetitorFeeds(src),
+      feedService.fetchIndustryFeeds(src),
     ]);
     res.json({
       ok: true,
@@ -488,20 +291,16 @@ app.get('/api/feeds/all', async (req, res) => {
 });
 
 app.get('/api/status', (req, res) => {
+  const feedCacheStatus = feedService.getCacheStatus();
   res.json({
     ok: true,
     uptime: process.uptime(),
     cache: {
-      competitors: {
-        cached: !!cache.competitors.data,
-        age: cache.competitors.timestamp
-          ? Date.now() - cache.competitors.timestamp
-          : null,
-      },
-      industry: {
-        cached: !!cache.industry.data,
-        age: cache.industry.timestamp
-          ? Date.now() - cache.industry.timestamp
+      ...feedCacheStatus,
+      radar: {
+        cached: !!cache.radar.data,
+        age: cache.radar.timestamp
+          ? Date.now() - cache.radar.timestamp
           : null,
       },
     },
@@ -511,13 +310,14 @@ app.get('/api/status', (req, res) => {
 // --- Radar Items API ---
 app.get('/api/radar', async (req, res) => {
   try {
-    if (isCacheValid('radar')) {
+    if (isRadarCacheValid()) {
       return res.json({ ok: true, timestamp: cache.radar.timestamp, items: cache.radar.data });
     }
 
+    const src = loadSources();
     const [competitors, industry] = await Promise.all([
-      fetchCompetitorFeeds(),
-      fetchIndustryFeeds(),
+      feedService.fetchCompetitorFeeds(src),
+      feedService.fetchIndustryFeeds(src),
     ]);
 
     // Flatten all items with source metadata
@@ -535,7 +335,7 @@ app.get('/api/radar', async (req, res) => {
     });
 
     console.log(`[RADAR] Classifying ${allItems.length} items...`);
-    const classified = await classifyRadarItems(allItems);
+    const classified = await classificationService.classifyRadarItems(allItems);
 
     cache.radar = { data: classified, timestamp: Date.now() };
     console.log(`[RADAR] Classification complete. ${classified.length} items on radar.`);
@@ -560,8 +360,7 @@ app.put('/api/sources', (req, res) => {
   sources = updated;
   saveSources(sources);
   // Invalidate feed caches so next scan uses new sources
-  cache.competitors = { data: null, timestamp: 0 };
-  cache.industry = { data: null, timestamp: 0 };
+  feedService.invalidateCache();
   cache.radar = { data: null, timestamp: 0 };
   console.log('[SOURCES] Updated and saved. Cache invalidated.');
   res.json({ ok: true });
@@ -575,7 +374,7 @@ app.post('/api/sources/add-competitor', (req, res) => {
   const safeKey = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
   sources.competitors[safeKey] = { name, feeds };
   saveSources(sources);
-  cache.competitors = { data: null, timestamp: 0 };
+  feedService.invalidateCache();
   cache.radar = { data: null, timestamp: 0 };
   console.log(`[SOURCES] Added competitor: ${name} (${safeKey})`);
   res.json({ ok: true, key: safeKey });
@@ -588,7 +387,7 @@ app.delete('/api/sources/competitor/:key', (req, res) => {
   }
   delete sources.competitors[key];
   saveSources(sources);
-  cache.competitors = { data: null, timestamp: 0 };
+  feedService.invalidateCache();
   cache.radar = { data: null, timestamp: 0 };
   console.log(`[SOURCES] Removed competitor: ${key}`);
   res.json({ ok: true });
@@ -602,7 +401,7 @@ app.post('/api/sources/add-industry', (req, res) => {
   if (!sources.industry.includes(url)) {
     sources.industry.push(url);
     saveSources(sources);
-    cache.industry = { data: null, timestamp: 0 };
+    feedService.invalidateCache();
     cache.radar = { data: null, timestamp: 0 };
   }
   res.json({ ok: true });
@@ -612,7 +411,7 @@ app.delete('/api/sources/industry', (req, res) => {
   const { url } = req.body;
   sources.industry = sources.industry.filter((u) => u !== url);
   saveSources(sources);
-  cache.industry = { data: null, timestamp: 0 };
+  feedService.invalidateCache();
   cache.radar = { data: null, timestamp: 0 };
   res.json({ ok: true });
 });
@@ -782,7 +581,7 @@ app.post('/api/sources/search', async (req, res) => {
     await Promise.allSettled(feedPaths.map(async (p) => {
       try {
         const url = baseUrl + p;
-        const feed = await parser.parseURL(url);
+        const feed = await feedService.getParser().parseURL(url);
         if (feed && feed.items && feed.items.length > 0) {
           discovered.push({
             url,
@@ -950,9 +749,10 @@ app.get('/api/brief', async (req, res) => {
   }
 
   try {
+    const src = loadSources();
     const [competitors, industry] = await Promise.all([
-      fetchCompetitorFeeds(),
-      fetchIndustryFeeds(),
+      feedService.fetchCompetitorFeeds(src),
+      feedService.fetchIndustryFeeds(src),
     ]);
 
     // Build signal digest for the prompt
@@ -1145,7 +945,8 @@ app.listen(PORT, () => {
   // Pre-warm cache
   setTimeout(() => {
     console.log('[INIT] Pre-warming feed cache...');
-    Promise.all([fetchCompetitorFeeds(), fetchIndustryFeeds()]).then(() => {
+    const src = loadSources();
+    Promise.all([feedService.fetchCompetitorFeeds(src), feedService.fetchIndustryFeeds(src)]).then(() => {
       console.log('[INIT] Cache warmed. Ready for operations.');
     });
   }, 2000);
