@@ -35,7 +35,7 @@ router.get('/radar', async (req, res) => {
     }
 
     const { loadSources } = req.app.locals;
-    const src = loadSources();
+    const src = await loadSources();
     const [competitors, industry] = await Promise.all([
       feedService.fetchCompetitorFeeds(src),
       feedService.fetchIndustryFeeds(src),

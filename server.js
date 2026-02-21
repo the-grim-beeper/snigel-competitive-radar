@@ -3,120 +3,12 @@ const path = require('path');
 const fs = require('fs');
 const config = require('./src/config');
 const migrate = require('./src/db/migrate');
+const { seedFromFile } = require('./src/services/seedService');
+const { getLegacySourcesFormat } = require('./src/helpers/legacyFormat');
 
 // --- Data paths ---
-const SOURCES_FILE = path.join(__dirname, 'data', 'sources.json');
 const PROFILES_FILE = path.join(__dirname, 'data', 'profiles.json');
 const BRIEFS_DIR = path.join(__dirname, 'data', 'briefs');
-
-// --- Default feed sources (used if sources.json doesn't exist) ---
-const DEFAULT_SOURCES = {
-  competitors: {
-    snigel: {
-      name: 'Snigel Design',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SNIGEL%22+tactical&hl=en&gl=SE&ceid=SE:en',
-        'https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SnigelDesign%22&hl=sv&gl=SE&ceid=SE:sv',
-      ],
-    },
-    nfm: {
-      name: 'NFM Group',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22NFM+Group%22+military+OR+defense+OR+tactical&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22NFM+Group%22+OR+%22nfm.no%22&hl=no&gl=NO&ceid=NO:no',
-      ],
-    },
-    mehler: {
-      name: 'Mehler Systems',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Protection%22&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Vario%22&hl=de&gl=DE&ceid=DE:de',
-      ],
-    },
-    lindnerhof: {
-      name: 'Lindnerhof Taktik',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Lindnerhof+Taktik%22+OR+%22Lindnerhof-Taktik%22&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Lindnerhof%22+tactical+OR+military&hl=de&gl=DE&ceid=DE:de',
-      ],
-    },
-    sacci: {
-      name: 'Sacci AB',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22+military+OR+tactical+OR+medical&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22&hl=sv&gl=SE&ceid=SE:sv',
-      ],
-    },
-    savotta: {
-      name: 'Savotta',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Savotta%22+military+OR+defense+OR+tactical+Finland&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Savotta%22+puolustusvoimat+OR+armeija&hl=fi&gl=FI&ceid=FI:fi',
-      ],
-    },
-    taiga: {
-      name: 'Taiga AB',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Taiga%22+tactical+clothing+military+Sweden&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Taiga+AB%22+OR+%22taiga.se%22&hl=sv&gl=SE&ceid=SE:sv',
-      ],
-    },
-    tasmanian_tiger: {
-      name: 'Tasmanian Tiger',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+tactical+OR+military+OR+gear&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+Tatonka+tactical&hl=de&gl=DE&ceid=DE:de',
-      ],
-    },
-    equipnor: {
-      name: 'Equipnor',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Equipnor%22+military+OR+defense&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Equipnor%22&hl=sv&gl=SE&ceid=SE:sv',
-      ],
-    },
-    ptd: {
-      name: 'PTD Group',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22+OR+%22PTD+Group%22&hl=en&ceid=US:en',
-        'https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22&hl=da&gl=DK&ceid=DK:da',
-      ],
-    },
-    ufpro: {
-      name: 'UF PRO',
-      feeds: [
-        'https://news.google.com/rss/search?q=%22UF+PRO%22+tactical+clothing+military&hl=en&ceid=US:en',
-      ],
-    },
-  },
-  industry: [
-    'https://news.google.com/rss/search?q=european+defense+equipment+tactical+soldier+modernization&hl=en&ceid=US:en',
-    'https://news.google.com/rss/search?q=soldier+equipment+Europe+procurement+2025+OR+2026&hl=en&ceid=US:en',
-    'https://news.google.com/rss/search?q=europeisk+f%C3%B6rsvar+upphandling+soldatutrustning&hl=sv&gl=SE&ceid=SE:sv',
-    'https://news.google.com/rss/search?q=NATO+soldier+modernization+load+carrying&hl=en&ceid=US:en',
-    'https://www.reddit.com/r/tacticalgear/.rss',
-  ],
-};
-
-// --- Source persistence ---
-function loadSources() {
-  try {
-    if (fs.existsSync(SOURCES_FILE)) {
-      return JSON.parse(fs.readFileSync(SOURCES_FILE, 'utf8'));
-    }
-  } catch (err) {
-    console.error('[SOURCES] Error loading sources.json:', err.message);
-  }
-  // First run or corrupt file -- seed from defaults
-  saveSources(DEFAULT_SOURCES);
-  return DEFAULT_SOURCES;
-}
-
-function saveSources(sources) {
-  const dir = path.dirname(SOURCES_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(SOURCES_FILE, JSON.stringify(sources, null, 2));
-}
 
 // --- Profile persistence ---
 function loadProfiles() {
@@ -194,8 +86,7 @@ button:hover{background:rgba(0,255,136,.2);border-color:rgba(0,255,136,.5)}
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Expose shared helpers to route files via app.locals ---
-app.locals.loadSources = loadSources;
-app.locals.saveSources = saveSources;
+app.locals.loadSources = getLegacySourcesFormat;
 app.locals.loadProfiles = loadProfiles;
 app.locals.saveProfiles = saveProfiles;
 app.locals.ensureBriefsDir = ensureBriefsDir;
@@ -218,7 +109,18 @@ async function start() {
     console.warn('[db] Migration skipped:', e.message);
   }
 
-  const sources = loadSources();
+  try {
+    await seedFromFile();
+  } catch (e) {
+    console.warn('[seed] Seed skipped:', e.message);
+  }
+
+  let sources = { competitors: {}, industry: [] };
+  try {
+    sources = await getLegacySourcesFormat();
+  } catch (e) {
+    console.warn('[startup] Could not load sources from DB:', e.message);
+  }
 
   app.listen(config.port, () => {
     console.log(`
@@ -238,7 +140,7 @@ async function start() {
   setTimeout(async () => {
     try {
       const feedService = require('./src/services/feedService');
-      const src = loadSources();
+      const src = await getLegacySourcesFormat();
       await feedService.fetchCompetitorFeeds(src);
       await feedService.fetchIndustryFeeds(src);
       console.log('[startup] Feed cache warmed');

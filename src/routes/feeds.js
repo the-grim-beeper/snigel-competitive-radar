@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/feeds/competitors', async (req, res) => {
   try {
     const { loadSources } = req.app.locals;
-    const data = await feedService.fetchCompetitorFeeds(loadSources());
+    const data = await feedService.fetchCompetitorFeeds(await loadSources());
     res.json({
       ok: true,
       timestamp: Date.now(),
@@ -23,7 +23,7 @@ router.get('/feeds/competitors', async (req, res) => {
 router.get('/feeds/industry', async (req, res) => {
   try {
     const { loadSources } = req.app.locals;
-    const data = await feedService.fetchIndustryFeeds(loadSources());
+    const data = await feedService.fetchIndustryFeeds(await loadSources());
     res.json({
       ok: true,
       timestamp: Date.now(),
@@ -39,7 +39,7 @@ router.get('/feeds/industry', async (req, res) => {
 router.get('/feeds/all', async (req, res) => {
   try {
     const { loadSources } = req.app.locals;
-    const src = loadSources();
+    const src = await loadSources();
     const [competitors, industry] = await Promise.all([
       feedService.fetchCompetitorFeeds(src),
       feedService.fetchIndustryFeeds(src),

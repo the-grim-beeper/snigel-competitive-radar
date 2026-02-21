@@ -59,6 +59,10 @@ async function removeByUrl(url) {
   await pool.query('DELETE FROM sources WHERE url = $1', [url]);
 }
 
+async function removeByCompetitorKey(competitorKey) {
+  await pool.query('DELETE FROM sources WHERE competitor_key = $1', [competitorKey]);
+}
+
 async function findByUrl(url) {
   const { rows } = await pool.query('SELECT * FROM sources WHERE url = $1', [url]);
   return rows[0] || null;
@@ -68,4 +72,4 @@ async function markPolled(id) {
   await pool.query('UPDATE sources SET last_polled_at = NOW() WHERE id = $1', [id]);
 }
 
-module.exports = { getAll, getByType, getByCompetitor, getCompetitorSources, getIndustrySources, create, update, remove, removeByUrl, findByUrl, markPolled };
+module.exports = { getAll, getByType, getByCompetitor, getCompetitorSources, getIndustrySources, create, update, remove, removeByUrl, removeByCompetitorKey, findByUrl, markPolled };

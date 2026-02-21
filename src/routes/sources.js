@@ -2,93 +2,158 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const feedService = require('../services/feedService');
 const { invalidateCache: invalidateRadarCache } = require('./radar');
+const competitorsModel = require('../models/competitors');
+const sourcesModel = require('../models/sources');
+const { getLegacySourcesFormat } = require('../helpers/legacyFormat');
 
 const router = express.Router();
 
 const AI_MODEL = 'claude-sonnet-4-5-20250929';
 
 // GET /api/sources
-router.get('/sources', (req, res) => {
-  const { loadSources } = req.app.locals;
-  const sources = loadSources();
-  res.json({ ok: true, sources });
+router.get('/sources', async (req, res) => {
+  try {
+    const sources = await getLegacySourcesFormat();
+    res.json({ ok: true, sources });
+  } catch (err) {
+    console.error('[SOURCES] Error loading sources:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // PUT /api/sources
-router.put('/sources', (req, res) => {
-  const { loadSources, saveSources } = req.app.locals;
-  const updated = req.body;
-  if (!updated || !updated.competitors || !updated.industry) {
-    return res.status(400).json({ ok: false, error: 'Invalid sources format' });
+router.put('/sources', async (req, res) => {
+  try {
+    const updated = req.body;
+    if (!updated || !updated.competitors || !updated.industry) {
+      return res.status(400).json({ ok: false, error: 'Invalid sources format' });
+    }
+
+    // Sync incoming data to DB: remove all existing sources, re-create from payload
+    const existingSources = await sourcesModel.getAll();
+    for (const s of existingSources) {
+      await sourcesModel.remove(s.id);
+    }
+
+    // Re-create competitors and their feeds
+    for (const [key, comp] of Object.entries(updated.competitors)) {
+      await competitorsModel.upsert(key, { name: comp.name || key });
+      for (const url of (comp.feeds || [])) {
+        await sourcesModel.create({
+          type: 'rss',
+          url,
+          name: comp.name || key,
+          competitor_key: key,
+          category: 'competitor',
+        });
+      }
+    }
+
+    // Re-create industry feeds
+    for (const url of (updated.industry || [])) {
+      await sourcesModel.create({
+        type: 'rss',
+        url,
+        name: 'Industry',
+        category: 'industry',
+      });
+    }
+
+    feedService.invalidateCache();
+    invalidateRadarCache();
+    console.log('[SOURCES] Updated and saved to DB. Cache invalidated.');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[SOURCES] Error updating sources:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
-  saveSources(updated);
-  // Invalidate feed caches so next scan uses new sources
-  feedService.invalidateCache();
-  invalidateRadarCache();
-  console.log('[SOURCES] Updated and saved. Cache invalidated.');
-  res.json({ ok: true });
 });
 
 // POST /api/sources/add-competitor
-router.post('/sources/add-competitor', (req, res) => {
-  const { loadSources, saveSources } = req.app.locals;
-  const { key, name, feeds } = req.body;
-  if (!key || !name || !Array.isArray(feeds)) {
-    return res.status(400).json({ ok: false, error: 'Requires key, name, feeds[]' });
+router.post('/sources/add-competitor', async (req, res) => {
+  try {
+    const { key, name, feeds } = req.body;
+    if (!key || !name || !Array.isArray(feeds)) {
+      return res.status(400).json({ ok: false, error: 'Requires key, name, feeds[]' });
+    }
+    const safeKey = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    await competitorsModel.upsert(safeKey, { name });
+    for (const url of feeds) {
+      await sourcesModel.create({
+        type: 'rss',
+        url,
+        name,
+        competitor_key: safeKey,
+        category: 'competitor',
+      });
+    }
+    feedService.invalidateCache();
+    invalidateRadarCache();
+    console.log(`[SOURCES] Added competitor: ${name} (${safeKey})`);
+    res.json({ ok: true, key: safeKey });
+  } catch (err) {
+    console.error('[SOURCES] Error adding competitor:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
-  const sources = loadSources();
-  const safeKey = key.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  sources.competitors[safeKey] = { name, feeds };
-  saveSources(sources);
-  feedService.invalidateCache();
-  invalidateRadarCache();
-  console.log(`[SOURCES] Added competitor: ${name} (${safeKey})`);
-  res.json({ ok: true, key: safeKey });
 });
 
 // DELETE /api/sources/competitor/:key
-router.delete('/sources/competitor/:key', (req, res) => {
-  const { loadSources, saveSources } = req.app.locals;
-  const { key } = req.params;
-  const sources = loadSources();
-  if (!sources.competitors[key]) {
-    return res.status(404).json({ ok: false, error: 'Competitor not found' });
+router.delete('/sources/competitor/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    const comp = await competitorsModel.getByKey(key);
+    if (!comp) {
+      return res.status(404).json({ ok: false, error: 'Competitor not found' });
+    }
+    await sourcesModel.removeByCompetitorKey(key);
+    await competitorsModel.remove(key);
+    feedService.invalidateCache();
+    invalidateRadarCache();
+    console.log(`[SOURCES] Removed competitor: ${key}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[SOURCES] Error removing competitor:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
-  delete sources.competitors[key];
-  saveSources(sources);
-  feedService.invalidateCache();
-  invalidateRadarCache();
-  console.log(`[SOURCES] Removed competitor: ${key}`);
-  res.json({ ok: true });
 });
 
 // POST /api/sources/add-industry
-router.post('/sources/add-industry', (req, res) => {
-  const { loadSources, saveSources } = req.app.locals;
-  const { url } = req.body;
-  if (!url) {
-    return res.status(400).json({ ok: false, error: 'Requires url' });
+router.post('/sources/add-industry', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ ok: false, error: 'Requires url' });
+    }
+    const existing = await sourcesModel.findByUrl(url);
+    if (!existing) {
+      await sourcesModel.create({
+        type: 'rss',
+        url,
+        name: 'Industry',
+        category: 'industry',
+      });
+      feedService.invalidateCache();
+      invalidateRadarCache();
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[SOURCES] Error adding industry feed:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
-  const sources = loadSources();
-  if (!sources.industry.includes(url)) {
-    sources.industry.push(url);
-    saveSources(sources);
-    feedService.invalidateCache();
-    invalidateRadarCache();
-  }
-  res.json({ ok: true });
 });
 
 // DELETE /api/sources/industry
-router.delete('/sources/industry', (req, res) => {
-  const { loadSources, saveSources } = req.app.locals;
-  const { url } = req.body;
-  const sources = loadSources();
-  sources.industry = sources.industry.filter((u) => u !== url);
-  saveSources(sources);
-  feedService.invalidateCache();
-  invalidateRadarCache();
-  res.json({ ok: true });
+router.delete('/sources/industry', async (req, res) => {
+  try {
+    const { url } = req.body;
+    await sourcesModel.removeByUrl(url);
+    feedService.invalidateCache();
+    invalidateRadarCache();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[SOURCES] Error removing industry feed:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // POST /api/sources/suggest — AI Source Suggestions
@@ -101,8 +166,7 @@ router.post('/sources/suggest', async (req, res) => {
   }
 
   try {
-    const { loadSources } = req.app.locals;
-    const sources = loadSources();
+    const sources = await getLegacySourcesFormat();
     const lang = req.body.lang || 'en';
 
     const currentCompetitors = Object.entries(sources.competitors)
