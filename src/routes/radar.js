@@ -1,6 +1,7 @@
 const express = require('express');
 const feedService = require('../services/feedService');
 const classificationService = require('../services/classificationService');
+const signalsModel = require('../models/signals');
 const config = require('../config');
 
 const router = express.Router();
@@ -57,6 +58,31 @@ router.get('/radar', async (req, res) => {
 
     console.log(`[RADAR] Classifying ${allItems.length} items...`);
     const classified = await classificationService.classifyRadarItems(allItems);
+
+    // Persist new signals to DB
+    const newSignals = classified
+      .filter(item => item.link)
+      .map(item => ({
+        title: item.title,
+        link: item.link,
+        pub_date: item.pubDate || null,
+        snippet: item.snippet,
+        quadrant: item.quadrant,
+        relevance: item.relevance,
+        label: item.label,
+        source_name: item._sourceName || item.source,
+        source_type: item._sourceType,
+        source_key: item._sourceKey,
+      }));
+
+    try {
+      const inserted = await signalsModel.createBatch(newSignals);
+      if (inserted.length > 0) {
+        console.log(`[radar] Stored ${inserted.length} new signals`);
+      }
+    } catch (e) {
+      console.error('[radar] Signal persistence error:', e.message);
+    }
 
     cache.radar = { data: classified, timestamp: Date.now() };
     console.log(`[RADAR] Classification complete. ${classified.length} items on radar.`);

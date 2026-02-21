@@ -99,6 +99,7 @@ app.use('/api', require('./src/routes/sources').router);
 app.use('/api', require('./src/routes/briefings').router);
 app.use('/api', require('./src/routes/profiles').router);
 app.use('/api', require('./src/routes/status').router);
+app.use('/api', require('./src/routes/signals').router);
 
 // --- Startup ---
 async function start() {
