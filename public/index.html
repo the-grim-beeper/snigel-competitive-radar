@@ -501,6 +501,37 @@ body::after {
 .scan-result-focus { display:flex;flex-wrap:wrap;gap:0.2rem;margin-bottom:0.5rem; }
 
 .btn-lang-active { border-color: var(--accent-green) !important; color: var(--accent-green) !important; }
+
+/* Signals View */
+#signalsView { padding: 1rem 2rem; max-width: 1400px; margin: 0 auto; }
+#signalsView.hidden { display: none; }
+.signals-header { margin-bottom: 1.5rem; }
+.signals-header h2 { font-size: 1.5rem; color: var(--accent-green); }
+.signals-header p { color: var(--text-dim); font-size: 0.85rem; }
+.signals-filters { display: flex; flex-wrap: wrap; gap: 0.75rem; padding: 1rem; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 1rem; align-items: flex-end; }
+.signals-filters label { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--text-dim); }
+.signals-filters select, .signals-filters input { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem 0.5rem; font-size: 0.8rem; }
+.signals-filters button { padding: 0.4rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; border: 1px solid var(--border); }
+.signals-filters .btn-apply { background: var(--accent-green); color: #000; border: none; font-weight: 600; }
+.signals-filters .btn-clear { background: transparent; color: var(--text-dim); }
+.signals-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.signal-card { display: grid; grid-template-columns: 60px 1fr auto; gap: 1rem; padding: 0.75rem 1rem; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 6px; align-items: center; transition: border-color 0.2s; }
+.signal-card:hover { border-color: var(--accent-green); }
+.signal-relevance { text-align: center; font-size: 1.4rem; font-weight: 700; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid; }
+.signal-body a { color: var(--text-primary); text-decoration: none; }
+.signal-body a:hover { color: var(--accent-green); }
+.signal-meta { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem; }
+.signal-label { font-size: 0.8rem; color: var(--accent-amber); margin-top: 0.15rem; }
+.signal-quadrant { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.2rem 0.5rem; border-radius: 3px; white-space: nowrap; }
+.signals-pagination { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; font-size: 0.85rem; color: var(--text-dim); }
+.signals-pagination button { padding: 0.4rem 1rem; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); border-radius: 4px; cursor: pointer; }
+.signals-pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* Nav Buttons */
+.nav-buttons { display: flex; gap: 0.25rem; }
+.nav-btn { padding: 0.4rem 0.8rem; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; background: transparent; color: var(--text-dim); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+.nav-btn:hover { color: var(--text-primary); border-color: var(--accent-green); }
+.nav-btn.active { background: var(--accent-green); color: #000; border-color: var(--accent-green); }
 </style>
 </head>
 <body>
@@ -536,7 +567,11 @@ body::after {
     <button class="btn btn-sources" id="sourcesBtn">SOURCES</button>
     <button class="btn" id="scanBtn">SCAN NOW</button>
     <button class="btn" id="viewToggle">GRID VIEW</button>
-    <button class="btn" id="viewModeBtn">DASHBOARD</button>
+    <div class="nav-buttons">
+      <button id="navRadar" class="nav-btn active" onclick="switchView('radar')">RADAR</button>
+      <button id="navSignals" class="nav-btn" onclick="switchView('signals')" data-t="signalsPage">SIGNALS</button>
+      <button id="navDashboard" class="nav-btn" onclick="switchView('dashboard')" data-t="dashboard">DASHBOARD</button>
+    </div>
   </div>
 </header>
 
@@ -567,6 +602,46 @@ body::after {
       <div class="radar-legend" id="radarFullLegend"></div>
     </div>
   </div>
+</div>
+
+<div id="signalsView" class="hidden">
+  <div class="signals-header">
+    <h2 data-t="signalsTitle">All Signals</h2>
+    <p data-t="signalsSub">Filtered intelligence feed</p>
+  </div>
+  <div class="signals-filters">
+    <label><span data-t="filterQuadrant">Quadrant</span>
+      <select id="sigFilterQuadrant">
+        <option value="">All Quadrants</option>
+        <option value="competitors">Competitors</option>
+        <option value="industry">Industry</option>
+        <option value="snigel">Snigel</option>
+        <option value="anomalies">Anomalies</option>
+      </select>
+    </label>
+    <label><span data-t="filterCompetitor">Competitor</span>
+      <select id="sigFilterCompetitor">
+        <option value="">All Competitors</option>
+      </select>
+    </label>
+    <label><span data-t="filterSourceType">Source Type</span>
+      <select id="sigFilterSourceType">
+        <option value="">All Types</option>
+        <option value="rss">RSS Feed</option>
+        <option value="web_monitor">Web Monitor</option>
+      </select>
+    </label>
+    <label><span data-t="filterRelevance">Min Relevance</span>
+      <input type="number" id="sigFilterRelevance" min="1" max="10" value="" placeholder="1-10">
+    </label>
+    <label><span data-t="filterSearch">Search</span>
+      <input type="text" id="sigFilterSearch" placeholder="keyword...">
+    </label>
+    <button class="btn-apply" onclick="loadSignals()" data-t="filterApply">Apply</button>
+    <button class="btn-clear" onclick="clearSignalFilters()" data-t="filterClear">Clear</button>
+  </div>
+  <div class="signals-list" id="signalsList"></div>
+  <div class="signals-pagination" id="signalsPagination"></div>
 </div>
 
 <div id="dashboardView" class="hidden">
@@ -900,6 +975,34 @@ const TRANSLATIONS = {
     profileReason: 'Reason',
     addManually: '+ ADD MANUALLY',
     newCompetitorKey: 'Unique key (e.g. "arktis"):',
+    // Signals page
+    signalsPage: 'SIGNALS',
+    signalsTitle: 'All Signals',
+    signalsSub: 'Filtered intelligence feed',
+    filterQuadrant: 'Quadrant',
+    filterCompetitor: 'Competitor',
+    filterSourceType: 'Source Type',
+    filterRelevance: 'Min Relevance',
+    filterSearch: 'Search...',
+    filterApply: 'Apply',
+    filterClear: 'Clear',
+    signalsOf: 'of',
+    signalsShowing: 'Showing',
+    signalsPrev: 'Previous',
+    signalsNext: 'Next',
+    allQuadrants: 'All Quadrants',
+    allCompetitors: 'All Competitors',
+    allSourceTypes: 'All Types',
+    rssType: 'RSS Feed',
+    webMonitorType: 'Web Monitor',
+    noSignalsFound: 'No signals found',
+    // Web monitors
+    webMonitors: 'Web Monitors',
+    addWebMonitor: 'Add Web Monitor',
+    webMonitorUrl: 'Page URL to monitor',
+    webMonitorName: 'Display name',
+    webMonitorAdd: 'Start Monitoring',
+    webMonitorChecking: 'Taking initial snapshot...',
   },
   sv: {
     pageTitle: 'SNIGEL // Konkurrensunderr\u00e4ttelseradar',
@@ -1070,6 +1173,34 @@ const TRANSLATIONS = {
     profileReason: 'Anledning',
     addManually: '+ L\u00c4GG TILL MANUELLT',
     newCompetitorKey: 'Unik nyckel (t.ex. "arktis"):',
+    // Signals page
+    signalsPage: 'SIGNALER',
+    signalsTitle: 'Alla signaler',
+    signalsSub: 'Filtrerat underr\u00e4ttelsefl\u00f6de',
+    filterQuadrant: 'Kvadrant',
+    filterCompetitor: 'Konkurrent',
+    filterSourceType: 'K\u00e4lltyp',
+    filterRelevance: 'Min relevans',
+    filterSearch: 'S\u00f6k...',
+    filterApply: 'Till\u00e4mpa',
+    filterClear: 'Rensa',
+    signalsOf: 'av',
+    signalsShowing: 'Visar',
+    signalsPrev: 'F\u00f6reg\u00e5ende',
+    signalsNext: 'N\u00e4sta',
+    allQuadrants: 'Alla kvadranter',
+    allCompetitors: 'Alla konkurrenter',
+    allSourceTypes: 'Alla typer',
+    rssType: 'RSS-fl\u00f6de',
+    webMonitorType: 'Webb\u00f6vervakning',
+    noSignalsFound: 'Inga signaler hittades',
+    // Web monitors
+    webMonitors: 'Webb\u00f6vervakare',
+    addWebMonitor: 'L\u00e4gg till webb\u00f6vervakare',
+    webMonitorUrl: 'Sidans URL att \u00f6vervaka',
+    webMonitorName: 'Visningsnamn',
+    webMonitorAdd: 'Starta \u00f6vervakning',
+    webMonitorChecking: 'Tar f\u00f6rsta \u00f6gonblicksbild...',
   }
 };
 
@@ -1114,8 +1245,18 @@ function applyTranslations() {
   const ageValEl = document.getElementById('ageValue');
   if (ageValEl && ageIdx >= 0) ageValEl.textContent = t(AGE_LABELS_KEY[ageIdx]);
   buildAgeTicks();
-  const viewBtn = document.getElementById('viewModeBtn');
-  if (viewBtn) viewBtn.textContent = currentView === 'radar' ? t('dashboard') : t('radar');
+  // Update nav buttons translations
+  const navSignals = document.getElementById('navSignals');
+  if (navSignals) navSignals.textContent = t('signalsPage');
+  const navDashboard = document.getElementById('navDashboard');
+  if (navDashboard) navDashboard.textContent = t('dashboard');
+  const navRadar = document.getElementById('navRadar');
+  if (navRadar) navRadar.textContent = t('radar');
+  // Update data-t elements
+  document.querySelectorAll('[data-t]').forEach(function(el) {
+    var key = el.getAttribute('data-t');
+    if (key) el.textContent = t(key);
+  });
   renderSpider();
   // Update static panel headers
   const panels = document.querySelectorAll('.panel');
@@ -1233,9 +1374,6 @@ let radarFilteredItems = [];
 window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scanBtn').addEventListener('click', refreshFeeds);
   document.getElementById('viewToggle').addEventListener('click', toggleView);
-  document.getElementById('viewModeBtn').addEventListener('click', () => {
-    switchView(currentView === 'radar' ? 'dashboard' : 'radar');
-  });
   document.getElementById('thresholdSlider').addEventListener('input', (e) => {
     radarThreshold = parseInt(e.target.value, 10);
     document.getElementById('thresholdValue').textContent = radarThreshold;
@@ -1903,22 +2041,112 @@ function toggleView() {
 
 function switchView(view) {
   currentView = view;
-  const radarView = document.getElementById('radarView');
-  const dashboardView = document.getElementById('dashboardView');
-  const btn = document.getElementById('viewModeBtn');
+  document.getElementById('radarView').classList.toggle('hidden', view !== 'radar');
+  document.getElementById('signalsView').classList.toggle('hidden', view !== 'signals');
+  document.getElementById('dashboardView').classList.toggle('hidden', view !== 'dashboard');
+  document.getElementById('navRadar').classList.toggle('active', view === 'radar');
+  document.getElementById('navSignals').classList.toggle('active', view === 'signals');
+  document.getElementById('navDashboard').classList.toggle('active', view === 'dashboard');
+  if (view === 'radar') initRadar();
+  if (view === 'signals') { populateCompetitorFilter(); loadSignals(0); }
+  if (view === 'dashboard') { renderCompetitorCards(); renderSpider(); renderTimeline(); }
+}
 
-  if (view === 'radar') {
-    radarView.classList.remove('hidden');
-    dashboardView.classList.add('hidden');
-    btn.textContent = t('dashboard');
-    cancelAnimationFrame(radarAnimFrame);
-    initRadar();
-  } else {
-    radarView.classList.add('hidden');
-    dashboardView.classList.remove('hidden');
-    btn.textContent = t('radar');
-    cancelAnimationFrame(radarAnimFrame);
-    initRadar();
+/* ═══════════════════════════════════════════
+   SIGNALS LIST (filterable, paginated)
+   ═══════════════════════════════════════════ */
+let signalsOffset = 0;
+const SIGNALS_LIMIT = 50;
+const QUAD_COLORS_SIG = { competitors: '#ef4444', industry: '#38bdf8', snigel: '#00e5a0', anomalies: '#f0a500' };
+
+async function loadSignals(offset) {
+  if (offset === undefined) offset = 0;
+  signalsOffset = offset;
+  const params = new URLSearchParams();
+  const q = document.getElementById('sigFilterQuadrant').value;
+  const c = document.getElementById('sigFilterCompetitor').value;
+  const st = document.getElementById('sigFilterSourceType').value;
+  const r = document.getElementById('sigFilterRelevance').value;
+  const s = document.getElementById('sigFilterSearch').value;
+  if (q) params.set('quadrant', q);
+  if (c) params.set('source_key', c);
+  if (st) params.set('source_type', st);
+  if (r) params.set('min_relevance', r);
+  if (s) params.set('search', s);
+  params.set('limit', SIGNALS_LIMIT);
+  params.set('offset', offset);
+
+  const list = document.getElementById('signalsList');
+  const pag = document.getElementById('signalsPagination');
+  try {
+    const resp = await fetch('/api/signals?' + params.toString());
+    const data = await resp.json();
+    renderSignalsList(data, list, pag);
+  } catch (e) {
+    list.textContent = '';
+    list.appendChild(createEl('p', { style: 'color:var(--accent-red)' }, 'Failed to load signals'));
+    pag.textContent = '';
+  }
+}
+
+function renderSignalsList(data, list, pag) {
+  list.textContent = '';
+  pag.textContent = '';
+  if (!data.items || data.items.length === 0) {
+    list.appendChild(createEl('p', { style: 'color:var(--text-dim);text-align:center;padding:2rem' }, t('noSignalsFound')));
+    return;
+  }
+  data.items.forEach(function(s) {
+    var color = QUAD_COLORS_SIG[s.quadrant] || '#888';
+    var date = s.pub_date ? new Date(s.pub_date).toLocaleDateString() : '';
+    var relevanceCircle = createEl('div', { className: 'signal-relevance', style: 'color:' + color + ';border-color:' + color }, String(s.relevance));
+    var link = createEl('a', { href: s.link || '#', target: '_blank', rel: 'noopener' }, s.title || 'Untitled');
+    var labelDiv = createEl('div', { className: 'signal-label' }, s.label || '');
+    var metaDiv = createEl('div', { className: 'signal-meta' }, (s.source_name || '') + ' \u00b7 ' + date);
+    var body = createEl('div', { className: 'signal-body' });
+    body.appendChild(link);
+    body.appendChild(labelDiv);
+    body.appendChild(metaDiv);
+    var badge = createEl('span', { className: 'signal-quadrant', style: 'background:' + color + '22;color:' + color }, s.quadrant);
+    var card = createEl('div', { className: 'signal-card' });
+    card.appendChild(relevanceCircle);
+    card.appendChild(body);
+    card.appendChild(badge);
+    list.appendChild(card);
+  });
+
+  var start = data.offset + 1;
+  var end = Math.min(data.offset + data.items.length, data.total);
+  var prevBtn = createEl('button', {}, t('signalsPrev'));
+  if (data.offset === 0) prevBtn.disabled = true;
+  else prevBtn.addEventListener('click', function() { loadSignals(Math.max(0, data.offset - SIGNALS_LIMIT)); });
+  var info = createEl('span', {}, t('signalsShowing') + ' ' + start + '-' + end + ' ' + t('signalsOf') + ' ' + data.total);
+  var nextBtn = createEl('button', {}, t('signalsNext'));
+  if (end >= data.total) nextBtn.disabled = true;
+  else nextBtn.addEventListener('click', function() { loadSignals(data.offset + SIGNALS_LIMIT); });
+  pag.appendChild(prevBtn);
+  pag.appendChild(info);
+  pag.appendChild(nextBtn);
+}
+
+function clearSignalFilters() {
+  document.getElementById('sigFilterQuadrant').value = '';
+  document.getElementById('sigFilterCompetitor').value = '';
+  document.getElementById('sigFilterSourceType').value = '';
+  document.getElementById('sigFilterRelevance').value = '';
+  document.getElementById('sigFilterSearch').value = '';
+  loadSignals(0);
+}
+
+function populateCompetitorFilter() {
+  var sel = document.getElementById('sigFilterCompetitor');
+  if (!sel || sel.options.length > 1) return;
+  for (var key in COMPETITORS) {
+    if (!COMPETITORS.hasOwnProperty(key)) continue;
+    var opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = COMPETITORS[key].name;
+    sel.appendChild(opt);
   }
 }
 
@@ -2209,6 +2437,30 @@ function renderSources() {
   indSection.appendChild(addRow);
   body.appendChild(indSection);
 
+  // Web monitors section
+  const wmSection = createEl('div', {className:'sources-section'});
+  const wmHeader = createEl('div', {className:'sources-section-header'});
+  wmHeader.appendChild(createEl('div', {className:'sources-section-title'}, t('webMonitors')));
+  wmSection.appendChild(wmHeader);
+
+  const wmAddRow = createEl('div', {className:'source-add-row', style:{padding:'0.6rem 0', flexDirection:'column', gap:'0.4rem'}});
+  const wmUrlLabel = createEl('label', {style:'font-family:var(--font-data);font-size:0.65rem;color:var(--text-dim);display:flex;flex-direction:column;gap:0.2rem;width:100%'}, t('webMonitorUrl'));
+  const wmUrlInput = createEl('input', {className:'source-input', type:'text', id:'monitorUrl', placeholder:'https://example.com/pricing'});
+  wmUrlLabel.appendChild(wmUrlInput);
+  wmAddRow.appendChild(wmUrlLabel);
+
+  const wmNameLabel = createEl('label', {style:'font-family:var(--font-data);font-size:0.65rem;color:var(--text-dim);display:flex;flex-direction:column;gap:0.2rem;width:100%'}, t('webMonitorName'));
+  const wmNameInput = createEl('input', {className:'source-input', type:'text', id:'monitorName', placeholder:t('webMonitorName')});
+  wmNameLabel.appendChild(wmNameInput);
+  wmAddRow.appendChild(wmNameLabel);
+
+  const wmBtn = createEl('button', {className:'source-btn primary', style:'align-self:flex-start;margin-top:0.3rem'}, t('webMonitorAdd'));
+  wmBtn.addEventListener('click', addWebMonitor);
+  wmAddRow.appendChild(wmBtn);
+
+  wmSection.appendChild(wmAddRow);
+  body.appendChild(wmSection);
+
   // AI suggestions container
   const suggestSection = createEl('div', {className:'sources-section'});
   suggestSection.id = 'suggestSection';
@@ -2390,6 +2642,31 @@ function setSourcesStatus(msg) {
   const el = document.getElementById('sourcesStatus');
   el.textContent = msg;
   setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 3000);
+}
+
+async function addWebMonitor() {
+  var url = document.getElementById('monitorUrl');
+  var name = document.getElementById('monitorName');
+  if (!url || !url.value.trim()) return;
+  setSourcesStatus(t('webMonitorChecking'));
+  try {
+    var resp = await fetch('/api/sources/add-web-monitor', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url.value.trim(), name: name.value.trim() || url.value.trim(), category: 'industry' }),
+    });
+    var data = await resp.json();
+    if (data.ok) {
+      url.value = '';
+      name.value = '';
+      setSourcesStatus(t('added'));
+      openSources();
+    } else {
+      setSourcesStatus(data.error || 'Error');
+    }
+  } catch (e) {
+    setSourcesStatus('Error: ' + e.message);
+  }
 }
 
 async function searchFeeds() {
