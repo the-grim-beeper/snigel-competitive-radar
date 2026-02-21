@@ -508,6 +508,45 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// --- Radar Items API ---
+app.get('/api/radar', async (req, res) => {
+  try {
+    if (isCacheValid('radar')) {
+      return res.json({ ok: true, timestamp: cache.radar.timestamp, items: cache.radar.data });
+    }
+
+    const [competitors, industry] = await Promise.all([
+      fetchCompetitorFeeds(),
+      fetchIndustryFeeds(),
+    ]);
+
+    // Flatten all items with source metadata
+    const allItems = [];
+
+    Object.entries(competitors).forEach(([key, data]) => {
+      if (!data.items) return;
+      data.items.forEach(item => {
+        allItems.push({ ...item, _sourceType: 'competitor', _sourceKey: key, _sourceName: data.name });
+      });
+    });
+
+    industry.forEach(item => {
+      allItems.push({ ...item, _sourceType: 'industry' });
+    });
+
+    console.log(`[RADAR] Classifying ${allItems.length} items...`);
+    const classified = await classifyRadarItems(allItems);
+
+    cache.radar = { data: classified, timestamp: Date.now() };
+    console.log(`[RADAR] Classification complete. ${classified.length} items on radar.`);
+
+    res.json({ ok: true, timestamp: cache.radar.timestamp, items: classified });
+  } catch (err) {
+    console.error('[RADAR] Error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // --- Source Management API ---
 app.get('/api/sources', (req, res) => {
   res.json({ ok: true, sources });
@@ -523,6 +562,7 @@ app.put('/api/sources', (req, res) => {
   // Invalidate feed caches so next scan uses new sources
   cache.competitors = { data: null, timestamp: 0 };
   cache.industry = { data: null, timestamp: 0 };
+  cache.radar = { data: null, timestamp: 0 };
   console.log('[SOURCES] Updated and saved. Cache invalidated.');
   res.json({ ok: true });
 });
@@ -536,6 +576,7 @@ app.post('/api/sources/add-competitor', (req, res) => {
   sources.competitors[safeKey] = { name, feeds };
   saveSources(sources);
   cache.competitors = { data: null, timestamp: 0 };
+  cache.radar = { data: null, timestamp: 0 };
   console.log(`[SOURCES] Added competitor: ${name} (${safeKey})`);
   res.json({ ok: true, key: safeKey });
 });
@@ -548,6 +589,7 @@ app.delete('/api/sources/competitor/:key', (req, res) => {
   delete sources.competitors[key];
   saveSources(sources);
   cache.competitors = { data: null, timestamp: 0 };
+  cache.radar = { data: null, timestamp: 0 };
   console.log(`[SOURCES] Removed competitor: ${key}`);
   res.json({ ok: true });
 });
@@ -561,6 +603,7 @@ app.post('/api/sources/add-industry', (req, res) => {
     sources.industry.push(url);
     saveSources(sources);
     cache.industry = { data: null, timestamp: 0 };
+    cache.radar = { data: null, timestamp: 0 };
   }
   res.json({ ok: true });
 });
@@ -570,6 +613,7 @@ app.delete('/api/sources/industry', (req, res) => {
   sources.industry = sources.industry.filter((u) => u !== url);
   saveSources(sources);
   cache.industry = { data: null, timestamp: 0 };
+  cache.radar = { data: null, timestamp: 0 };
   res.json({ ok: true });
 });
 
