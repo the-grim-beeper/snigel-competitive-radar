@@ -182,6 +182,14 @@ body::after {
   border: none;
   box-shadow: 0 0 8px var(--accent-green-dim);
 }
+.age-ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-data);
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
 .radar-item-count {
   font-family: var(--font-data);
   font-size: 0.7rem;
@@ -547,6 +555,14 @@ body::after {
         </div>
         <input type="range" class="threshold-slider" id="thresholdSlider" min="1" max="10" value="4" step="1">
       </div>
+      <div class="threshold-control">
+        <div class="threshold-label">
+          <span id="ageLabel">Max Age</span>
+          <span id="ageValue">All</span>
+        </div>
+        <input type="range" class="threshold-slider" id="ageSlider" min="0" max="5" value="5" step="1">
+        <div class="age-ticks" id="ageTicks"></div>
+      </div>
       <div class="radar-item-count" id="radarViewCount"></div>
       <div class="radar-legend" id="radarFullLegend"></div>
     </div>
@@ -771,6 +787,13 @@ const TRANSLATIONS = {
     radarNoItems: 'No radar items yet. Click SCAN NOW.',
     radarItemsCount: 'items on radar',
     radarThreshold: 'Min Relevance',
+    radarMaxAge: 'Max Age',
+    radarAge6h: '6h',
+    radarAge1d: '1d',
+    radarAge3d: '3d',
+    radarAge7d: '7d',
+    radarAge30d: '30d',
+    radarAgeAll: 'All',
     dashboard: 'DASHBOARD',
     radar: 'RADAR',
     radarFilteredCount: 'showing',
@@ -939,6 +962,13 @@ const TRANSLATIONS = {
     radarNoItems: 'Inga radarobjekt ännu. Klicka SKANNA NU.',
     radarItemsCount: 'objekt på radarn',
     radarThreshold: 'Min relevans',
+    radarMaxAge: 'Max ålder',
+    radarAge6h: '6t',
+    radarAge1d: '1d',
+    radarAge3d: '3d',
+    radarAge7d: '7d',
+    radarAge30d: '30d',
+    radarAgeAll: 'Alla',
     dashboard: 'INSTRUMENTPANEL',
     radar: 'RADAR',
     radarFilteredCount: 'visar',
@@ -1078,6 +1108,12 @@ function applyTranslations() {
   if (titleEl) titleEl.textContent = t('newsRadar');
   const threshLabel = document.getElementById('thresholdLabel');
   if (threshLabel) threshLabel.textContent = t('radarThreshold');
+  const ageLabel = document.getElementById('ageLabel');
+  if (ageLabel) ageLabel.textContent = t('radarMaxAge');
+  const ageIdx = AGE_STEPS.indexOf(radarMaxAgeHours);
+  const ageValEl = document.getElementById('ageValue');
+  if (ageValEl && ageIdx >= 0) ageValEl.textContent = t(AGE_LABELS_KEY[ageIdx]);
+  buildAgeTicks();
   const viewBtn = document.getElementById('viewModeBtn');
   if (viewBtn) viewBtn.textContent = currentView === 'radar' ? t('dashboard') : t('radar');
   renderSpider();
@@ -1186,6 +1222,9 @@ let radarItems = [];
 let radarHoveredItem = null;
 let currentView = 'radar'; // 'radar' or 'dashboard'
 let radarThreshold = 4;
+let radarMaxAgeHours = Infinity; // Infinity = all
+const AGE_STEPS = [6, 24, 72, 168, 720, Infinity]; // 6h, 1d, 3d, 7d, 30d, All
+const AGE_LABELS_KEY = ['radarAge6h', 'radarAge1d', 'radarAge3d', 'radarAge7d', 'radarAge30d', 'radarAgeAll'];
 let radarFilteredItems = [];
 
 /* ═══════════════════════════════════════════
@@ -1203,6 +1242,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     cancelAnimationFrame(radarAnimFrame);
     initRadar();
   });
+  document.getElementById('ageSlider').addEventListener('input', (e) => {
+    const idx = parseInt(e.target.value, 10);
+    radarMaxAgeHours = AGE_STEPS[idx];
+    document.getElementById('ageValue').textContent = t(AGE_LABELS_KEY[idx]);
+    cancelAnimationFrame(radarAnimFrame);
+    initRadar();
+  });
+  // Build age tick labels
+  buildAgeTicks();
   document.getElementById('briefBtn').addEventListener('click', generateBrief);
   document.getElementById('briefClose').addEventListener('click', closeBrief);
   document.getElementById('briefHistoryBtn').addEventListener('click', showBriefHistory);
@@ -1284,6 +1332,17 @@ async function fetchRadarItems() {
   initRadar();
 }
 
+function buildAgeTicks() {
+  const container = document.getElementById('ageTicks');
+  if (!container) return;
+  container.replaceChildren();
+  AGE_LABELS_KEY.forEach(key => {
+    const span = document.createElement('span');
+    span.textContent = t(key);
+    container.appendChild(span);
+  });
+}
+
 /* ═══════════════════════════════════════════
    RADAR CANVAS
    ═══════════════════════════════════════════ */
@@ -1319,8 +1378,17 @@ function initRadar() {
     });
   }
 
-  // Filter items by threshold
-  const filtered = radarItems.filter(item => item.relevance >= radarThreshold);
+  // Filter items by threshold and age
+  const now = Date.now();
+  const maxAgeMs = radarMaxAgeHours === Infinity ? Infinity : radarMaxAgeHours * 3600 * 1000;
+  const filtered = radarItems.filter(item => {
+    if (item.relevance < radarThreshold) return false;
+    if (maxAgeMs !== Infinity && item.pubDate) {
+      const age = now - new Date(item.pubDate).getTime();
+      if (age > maxAgeMs) return false;
+    }
+    return true;
+  });
 
   // Update count display
   if (isFull) {
@@ -1330,6 +1398,8 @@ function initRadar() {
     if (titleEl) titleEl.textContent = t('newsRadar');
     const threshLabel = document.getElementById('thresholdLabel');
     if (threshLabel) threshLabel.textContent = t('radarThreshold');
+    const ageLabel = document.getElementById('ageLabel');
+    if (ageLabel) ageLabel.textContent = t('radarMaxAge');
   }
 
   // Assign angular positions to filtered items within their quadrant
@@ -1451,12 +1521,6 @@ function animateRadar() {
     ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
     ctx.beginPath(); ctx.arc(bx, by, bs + 2 * dpr, 0, Math.PI * 2);
     ctx.strokeStyle = color + '44'; ctx.lineWidth = dpr; ctx.stroke();
-
-    // Label
-    ctx.font = `${8 * dpr}px 'Rajdhani', sans-serif`;
-    ctx.fillStyle = color + 'cc'; ctx.textAlign = 'center';
-    const labelText = (item.label || '').substring(0, 20);
-    ctx.fillText(labelText, bx, by + bs * 1.5 + 10 * dpr);
 
     // Store pixel position for hit-testing
     item._bx = bx / dpr; item._by = by / dpr; item._bs = bs / dpr;
