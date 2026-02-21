@@ -342,8 +342,11 @@ async function fetchIndustryFeeds() {
 async function classifyRadarItems(allItems) {
   // Fallback if no API key
   if (!process.env.ANTHROPIC_API_KEY) {
-    return allItems.map((item, i) => ({
-      ...item,
+    return allItems.map((item) => ({
+      title: item.title || '',
+      link: item.link || '',
+      pubDate: item.pubDate || '',
+      source: item.source || '',
       quadrant: item._sourceType === 'competitor' ? 'competitors' : 'industry',
       relevance: 0.5,
       label: (item.title || '').substring(0, 40),
