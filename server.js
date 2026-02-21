@@ -348,7 +348,7 @@ async function classifyRadarItems(allItems) {
       pubDate: item.pubDate || '',
       source: item.source || '',
       quadrant: item._sourceType === 'competitor' ? 'competitors' : 'industry',
-      relevance: 0.5,
+      relevance: 5,
       label: (item.title || '').substring(0, 40),
     }));
   }
@@ -384,14 +384,14 @@ Quadrants:
 - "snigel": News directly mentioning or relevant to Snigel Design AB
 - "anomalies": Unusual signals, cross-cutting trends, or items that don't fit the above but could be strategically important
 
-Relevance scoring (0.0 to 1.0):
-- 1.0 = directly actionable for Snigel leadership (competitor M&A, lost/won contract, direct mention)
-- 0.7-0.9 = highly relevant (competitor product launch, major procurement, industry shift)
-- 0.4-0.6 = moderately relevant (general defense news, tangential industry event)
-- 0.1-0.3 = low relevance (peripheral news, weak connection)
+Relevance scoring (integer 1-10):
+- 10 = directly actionable for Snigel leadership (competitor M&A, lost/won contract, direct mention)
+- 7-9 = highly relevant (competitor product launch, major procurement, industry shift)
+- 4-6 = moderately relevant (general defense news, tangential industry event)
+- 1-3 = low relevance (peripheral news, weak connection)
 
 Return ONLY a raw JSON array, no markdown fences. Each element:
-{"index": 0, "quadrant": "competitors", "relevance": 0.75, "label": "Short 3-6 word label"}`,
+{"index": 0, "quadrant": "competitors", "relevance": 7, "label": "Short 3-6 word label"}`,
         messages: [{
           role: 'user',
           content: `Classify these ${chunk.length} news items:\n\n${JSON.stringify(itemsForPrompt, null, 1)}`,
@@ -409,7 +409,7 @@ Return ONLY a raw JSON array, no markdown fences. Each element:
         classifications: chunk.map((item, i) => ({
           index: i,
           quadrant: item._sourceType === 'competitor' ? 'competitors' : 'industry',
-          relevance: 0.5,
+          relevance: 5,
           label: (item.title || '').substring(0, 40),
         })),
       };
@@ -429,7 +429,7 @@ Return ONLY a raw JSON array, no markdown fences. Each element:
         pubDate: item.pubDate,
         source: item.source,
         quadrant: cl.quadrant,
-        relevance: Math.max(0, Math.min(1, cl.relevance || 0.5)),
+        relevance: Math.max(1, Math.min(10, Math.round(cl.relevance) || 5)),
         label: cl.label || (item.title || '').substring(0, 40),
       });
     });
