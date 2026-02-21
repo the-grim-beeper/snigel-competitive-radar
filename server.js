@@ -5,6 +5,7 @@ const config = require('./src/config');
 const migrate = require('./src/db/migrate');
 const { seedFromFile } = require('./src/services/seedService');
 const { getLegacySourcesFormat } = require('./src/helpers/legacyFormat');
+const pollingService = require('./src/services/pollingService');
 
 // --- Data paths ---
 const PROFILES_FILE = path.join(__dirname, 'data', 'profiles.json');
@@ -127,20 +128,10 @@ async function start() {
 
   Open http://localhost:${config.port} in your browser.
     `);
-  });
 
-  // Pre-warm feed cache
-  setTimeout(async () => {
-    try {
-      const feedService = require('./src/services/feedService');
-      const src = await getLegacySourcesFormat();
-      await feedService.fetchCompetitorFeeds(src);
-      await feedService.fetchIndustryFeeds(src);
-      console.log('[startup] Feed cache warmed');
-    } catch (e) {
-      console.error('[startup] Feed warm error:', e.message);
-    }
-  }, 2000);
+    // Start background polling (replaces old feed pre-warm)
+    pollingService.start(app.locals.loadSources);
+  });
 }
 
 start();
