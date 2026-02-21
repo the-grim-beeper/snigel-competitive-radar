@@ -96,6 +96,98 @@ body::after {
 .legend-item:hover { color: var(--text-secondary); }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
 
+/* Full-view radar */
+#radarView {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  background: var(--bg-deepest);
+}
+#radarView.hidden { display: none; }
+#dashboardView.hidden { display: none; }
+
+.radar-fullview {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 2rem;
+  gap: 2rem;
+}
+.radar-fullview-canvas {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.radar-fullview-canvas canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+.radar-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  padding-top: 1rem;
+}
+.radar-sidebar .panel-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.threshold-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.threshold-label {
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+}
+.threshold-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--border-bright);
+  border-radius: 2px;
+  outline: none;
+}
+.threshold-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-green-dim);
+}
+.threshold-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 8px var(--accent-green-dim);
+}
+.radar-item-count {
+  font-family: var(--font-data);
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
 .feed-panel { grid-column: 2; grid-row: 1; min-height: 520px; }
 .feed-tabs { display: flex; gap: 0; margin-bottom: 1rem; border: 1px solid var(--border); border-radius: 3px; overflow: hidden; }
 .feed-tab { flex: 1; font-family: var(--font-data); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.5rem; text-align: center; background: var(--bg-card); color: var(--text-dim); border: none; cursor: pointer; transition: all 0.2s; border-right: 1px solid var(--border); }
@@ -297,6 +389,8 @@ body::after {
   .competitors-panel, .spider-panel, .timeline-panel { grid-row: auto; }
   .competitor-card.expanded { grid-column: span 1; }
   .radar-container { width: 340px; height: 340px; }
+  .radar-fullview { flex-direction: column; padding: 1rem; }
+  .radar-sidebar { width: 100%; flex-direction: row; flex-wrap: wrap; gap: 1rem; }
 }
 @media print {
   body { background: #fff !important; color: #000 !important; }
@@ -434,9 +528,32 @@ body::after {
     <button class="btn btn-sources" id="sourcesBtn">SOURCES</button>
     <button class="btn" id="scanBtn">SCAN NOW</button>
     <button class="btn" id="viewToggle">GRID VIEW</button>
+    <button class="btn" id="viewModeBtn">DASHBOARD</button>
   </div>
 </header>
 
+<!-- RADAR VIEW (default, full viewport) -->
+<div id="radarView">
+  <div class="radar-fullview">
+    <div class="radar-fullview-canvas">
+      <canvas id="radarCanvasFull"></canvas>
+    </div>
+    <div class="radar-sidebar">
+      <div class="panel-title"><div class="icon"></div><span id="radarViewTitle">News Radar</span></div>
+      <div class="threshold-control">
+        <div class="threshold-label">
+          <span id="thresholdLabel">Min Relevance</span>
+          <span id="thresholdValue">4</span>
+        </div>
+        <input type="range" class="threshold-slider" id="thresholdSlider" min="1" max="10" value="4" step="1">
+      </div>
+      <div class="radar-item-count" id="radarViewCount"></div>
+      <div class="radar-legend" id="radarFullLegend"></div>
+    </div>
+  </div>
+</div>
+
+<div id="dashboardView" class="hidden">
 <main class="main">
   <section class="panel radar-panel">
     <div class="panel-header">
@@ -480,6 +597,7 @@ body::after {
     <div class="timeline-list" id="timelineList"></div>
   </section>
 </main>
+</div><!-- /dashboardView -->
 
 <!-- Brief Modal -->
 <div class="brief-overlay" id="briefOverlay">
@@ -652,6 +770,11 @@ const TRANSLATIONS = {
     radarLoading: 'Classifying signals...',
     radarNoItems: 'No radar items yet. Click SCAN NOW.',
     radarItemsCount: 'items on radar',
+    radarThreshold: 'Min Relevance',
+    dashboard: 'DASHBOARD',
+    radar: 'RADAR',
+    radarFilteredCount: 'showing',
+    radarOfTotal: 'of',
     // Radar rings
     critical: 'CRITICAL',
     // Spider / capabilities
@@ -815,6 +938,11 @@ const TRANSLATIONS = {
     radarLoading: 'Klassificerar signaler...',
     radarNoItems: 'Inga radarobjekt ännu. Klicka SKANNA NU.',
     radarItemsCount: 'objekt på radarn',
+    radarThreshold: 'Min relevans',
+    dashboard: 'INSTRUMENTPANEL',
+    radar: 'RADAR',
+    radarFilteredCount: 'visar',
+    radarOfTotal: 'av',
     critical: 'KRITISK',
     productBreadth: 'Produktbredd',
     productionScale: 'Produktionsskala',
@@ -945,6 +1073,13 @@ function applyTranslations() {
   renderFeed();
   cancelAnimationFrame(radarAnimFrame);
   fetchRadarItems();
+  // Update radar fullview labels
+  const titleEl = document.getElementById('radarViewTitle');
+  if (titleEl) titleEl.textContent = t('newsRadar');
+  const threshLabel = document.getElementById('thresholdLabel');
+  if (threshLabel) threshLabel.textContent = t('radarThreshold');
+  const viewBtn = document.getElementById('viewModeBtn');
+  if (viewBtn) viewBtn.textContent = currentView === 'radar' ? t('dashboard') : t('radar');
   renderSpider();
   // Update static panel headers
   const panels = document.querySelectorAll('.panel');
@@ -1049,6 +1184,9 @@ let radarAnimFrame = null;
 let radarAngle = 0;
 let radarItems = [];
 let radarHoveredItem = null;
+let currentView = 'radar'; // 'radar' or 'dashboard'
+let radarThreshold = 4;
+let radarFilteredItems = [];
 
 /* ═══════════════════════════════════════════
    INIT
@@ -1056,6 +1194,15 @@ let radarHoveredItem = null;
 window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('scanBtn').addEventListener('click', refreshFeeds);
   document.getElementById('viewToggle').addEventListener('click', toggleView);
+  document.getElementById('viewModeBtn').addEventListener('click', () => {
+    switchView(currentView === 'radar' ? 'dashboard' : 'radar');
+  });
+  document.getElementById('thresholdSlider').addEventListener('input', (e) => {
+    radarThreshold = parseInt(e.target.value, 10);
+    document.getElementById('thresholdValue').textContent = radarThreshold;
+    cancelAnimationFrame(radarAnimFrame);
+    initRadar();
+  });
   document.getElementById('briefBtn').addEventListener('click', generateBrief);
   document.getElementById('briefClose').addEventListener('click', closeBrief);
   document.getElementById('briefHistoryBtn').addEventListener('click', showBriefHistory);
@@ -1141,30 +1288,51 @@ async function fetchRadarItems() {
    RADAR CANVAS
    ═══════════════════════════════════════════ */
 function initRadar() {
-  const canvas = document.getElementById('radarCanvas');
+  // Determine which canvas/legend to use based on current view
+  const isFull = currentView === 'radar';
+  const canvas = document.getElementById(isFull ? 'radarCanvasFull' : 'radarCanvas');
+  if (!canvas) return;
+  const legendId = isFull ? 'radarFullLegend' : 'radarLegend';
+
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
+  const size = Math.min(rect.width, rect.height);
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
 
   // Build legend for 4 quadrants
-  const legend = document.getElementById('radarLegend');
-  legend.replaceChildren();
-  const quadrants = [
-    { key: 'competitors', color: '#ef4444', label: t('radarQuadCompetitors') },
-    { key: 'industry', color: '#38bdf8', label: t('radarQuadIndustry') },
-    { key: 'snigel', color: '#00e5a0', label: t('radarQuadSnigel') },
-    { key: 'anomalies', color: '#f0a500', label: t('radarQuadAnomalies') },
-  ];
-  quadrants.forEach(q => {
-    const dot = createEl('div', { className: 'legend-dot', style: { background: q.color } });
-    const item = createEl('div', { className: 'legend-item' }, [dot, q.label]);
-    legend.appendChild(item);
-  });
+  const legend = document.getElementById(legendId);
+  if (legend) {
+    legend.replaceChildren();
+    const quadrants = [
+      { key: 'competitors', color: '#ef4444', label: t('radarQuadCompetitors') },
+      { key: 'industry', color: '#38bdf8', label: t('radarQuadIndustry') },
+      { key: 'snigel', color: '#00e5a0', label: t('radarQuadSnigel') },
+      { key: 'anomalies', color: '#f0a500', label: t('radarQuadAnomalies') },
+    ];
+    quadrants.forEach(q => {
+      const dot = createEl('div', { className: 'legend-dot', style: { background: q.color } });
+      const item = createEl('div', { className: 'legend-item' }, [dot, q.label]);
+      legend.appendChild(item);
+    });
+  }
 
-  // Assign angular positions to radar items within their quadrant
+  // Filter items by threshold
+  const filtered = radarItems.filter(item => item.relevance >= radarThreshold);
+
+  // Update count display
+  if (isFull) {
+    const countEl = document.getElementById('radarViewCount');
+    if (countEl) countEl.textContent = `${t('radarFilteredCount')} ${filtered.length} ${t('radarOfTotal')} ${radarItems.length} ${t('radarItemsCount')}`;
+    const titleEl = document.getElementById('radarViewTitle');
+    if (titleEl) titleEl.textContent = t('newsRadar');
+    const threshLabel = document.getElementById('thresholdLabel');
+    if (threshLabel) threshLabel.textContent = t('radarThreshold');
+  }
+
+  // Assign angular positions to filtered items within their quadrant
   const quadrantRanges = {
     competitors: [315, 45],
     industry:   [45, 135],
@@ -1173,7 +1341,7 @@ function initRadar() {
   };
 
   const byQuadrant = { competitors: [], industry: [], snigel: [], anomalies: [] };
-  radarItems.forEach(item => {
+  filtered.forEach(item => {
     const q = byQuadrant[item.quadrant] || byQuadrant.anomalies;
     q.push(item);
   });
@@ -1185,15 +1353,17 @@ function initRadar() {
       const fraction = items.length === 1 ? 0.5 : (i + 0.5) / items.length;
       const angleDeg = startDeg + fraction * range;
       item._angleDeg = angleDeg % 360;
-      item._dist = 0.15 + (1 - item.relevance) * 0.7;
+      item._dist = 0.15 + (1 - item.relevance / 10) * 0.7;
     });
   });
 
+  // Store filtered items for animateRadar to use
+  radarFilteredItems = filtered;
   animateRadar();
 }
 
 function animateRadar() {
-  const canvas = document.getElementById('radarCanvas');
+  const canvas = document.getElementById(currentView === 'radar' ? 'radarCanvasFull' : 'radarCanvas');
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   const cx = w / 2, cy = h / 2;
@@ -1254,7 +1424,7 @@ function animateRadar() {
   const quadColors = { competitors: '#ef4444', industry: '#38bdf8', snigel: '#00e5a0', anomalies: '#f0a500' };
 
   // Draw news blips
-  radarItems.forEach((item) => {
+  radarFilteredItems.forEach((item) => {
     if (item._angleDeg === undefined) return;
     const angle = ((item._angleDeg - 90) * Math.PI) / 180;
     const dist = item._dist * maxR;
@@ -1277,7 +1447,7 @@ function animateRadar() {
     }
 
     // Blip dot — size varies by relevance
-    const bs = (3 + item.relevance * 3) * dpr;
+    const bs = (3 + (item.relevance / 10) * 4) * dpr;
     ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
     ctx.beginPath(); ctx.arc(bx, by, bs + 2 * dpr, 0, Math.PI * 2);
     ctx.strokeStyle = color + '44'; ctx.lineWidth = dpr; ctx.stroke();
@@ -1325,14 +1495,12 @@ function animateRadar() {
 
 // --- Radar mouse interaction ---
 (function setupRadarMouse() {
-  const canvas = document.getElementById('radarCanvas');
-
-  function getHitItem(e) {
+  function getHitItem(e, canvas) {
     const rect = canvas.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     let closest = null, closestDist = Infinity;
-    radarItems.forEach(item => {
+    radarFilteredItems.forEach(item => {
       if (item._bx === undefined) return;
       const dx = mx - item._bx, dy = my - item._by;
       const d = Math.sqrt(dx * dx + dy * dy);
@@ -1343,23 +1511,28 @@ function animateRadar() {
     return closest;
   }
 
-  canvas.addEventListener('mousemove', (e) => {
-    const hit = getHitItem(e);
-    radarHoveredItem = hit;
-    canvas.style.cursor = hit ? 'pointer' : 'default';
-  });
+  function attachHandlers(canvas) {
+    canvas.addEventListener('mousemove', (e) => {
+      const hit = getHitItem(e, canvas);
+      radarHoveredItem = hit;
+      canvas.style.cursor = hit ? 'pointer' : 'default';
+    });
 
-  canvas.addEventListener('mouseleave', () => {
-    radarHoveredItem = null;
-    canvas.style.cursor = 'default';
-  });
+    canvas.addEventListener('mouseleave', () => {
+      radarHoveredItem = null;
+      canvas.style.cursor = 'default';
+    });
 
-  canvas.addEventListener('click', (e) => {
-    const hit = getHitItem(e);
-    if (hit && hit.link) {
-      window.open(hit.link, '_blank', 'noopener');
-    }
-  });
+    canvas.addEventListener('click', (e) => {
+      const hit = getHitItem(e, canvas);
+      if (hit && hit.link) {
+        window.open(hit.link, '_blank', 'noopener');
+      }
+    });
+  }
+
+  attachHandlers(document.getElementById('radarCanvas'));
+  attachHandlers(document.getElementById('radarCanvasFull'));
 })();
 
 /* ═══════════════════════════════════════════
@@ -1662,6 +1835,27 @@ function toggleView() {
   const grid = document.getElementById('competitorsGrid');
   if (grid.style.gridTemplateColumns === '1fr') { grid.style.gridTemplateColumns = ''; btn.textContent = t('gridView'); }
   else { grid.style.gridTemplateColumns = '1fr'; btn.textContent = t('listView'); }
+}
+
+function switchView(view) {
+  currentView = view;
+  const radarView = document.getElementById('radarView');
+  const dashboardView = document.getElementById('dashboardView');
+  const btn = document.getElementById('viewModeBtn');
+
+  if (view === 'radar') {
+    radarView.classList.remove('hidden');
+    dashboardView.classList.add('hidden');
+    btn.textContent = t('dashboard');
+    cancelAnimationFrame(radarAnimFrame);
+    initRadar();
+  } else {
+    radarView.classList.add('hidden');
+    dashboardView.classList.remove('hidden');
+    btn.textContent = t('radar');
+    cancelAnimationFrame(radarAnimFrame);
+    initRadar();
+  }
 }
 
 /* ═══════════════════════════════════════════
