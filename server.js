@@ -8,7 +8,6 @@ const { getLegacySourcesFormat } = require('./src/helpers/legacyFormat');
 
 // --- Data paths ---
 const PROFILES_FILE = path.join(__dirname, 'data', 'profiles.json');
-const BRIEFS_DIR = path.join(__dirname, 'data', 'briefs');
 
 // --- Profile persistence ---
 function loadProfiles() {
@@ -26,11 +25,6 @@ function saveProfiles(profiles) {
   const dir = path.dirname(PROFILES_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(PROFILES_FILE, JSON.stringify(profiles, null, 2));
-}
-
-// --- Brief directory helper ---
-function ensureBriefsDir() {
-  if (!fs.existsSync(BRIEFS_DIR)) fs.mkdirSync(BRIEFS_DIR, { recursive: true });
 }
 
 // --- Express app ---
@@ -89,8 +83,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.locals.loadSources = getLegacySourcesFormat;
 app.locals.loadProfiles = loadProfiles;
 app.locals.saveProfiles = saveProfiles;
-app.locals.ensureBriefsDir = ensureBriefsDir;
-app.locals.briefsDir = BRIEFS_DIR;
 
 // --- Mount route modules ---
 app.use('/api', require('./src/routes/radar').router);

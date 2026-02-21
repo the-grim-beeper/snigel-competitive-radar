@@ -1,48 +1,18 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const Anthropic = require('@anthropic-ai/sdk');
 const feedService = require('../services/feedService');
+const briefingsModel = require('../models/briefings');
 
 const router = express.Router();
 
 const AI_MODEL = 'claude-sonnet-4-5-20250929';
 
-// --- Brief persistence helpers (use app.locals for dir/ensureBriefsDir) ---
+// --- Brief context helper (PostgreSQL) ---
 
-function saveBrief(briefsDir, text, usage) {
-  const id = new Date().toISOString().replace(/[:.]/g, '-');
-  const brief = {
-    id,
-    timestamp: new Date().toISOString(),
-    text,
-    usage,
-    signalCount: 0,
-  };
-  fs.writeFileSync(path.join(briefsDir, `${id}.json`), JSON.stringify(brief, null, 2));
-  console.log(`[BRIEF] Saved as ${id}.json`);
-  return brief;
-}
-
-function loadBriefs(briefsDir, ensureBriefsDir) {
-  ensureBriefsDir();
-  const files = fs.readdirSync(briefsDir).filter(f => f.endsWith('.json')).sort().reverse();
-  return files.map(f => {
-    try {
-      return JSON.parse(fs.readFileSync(path.join(briefsDir, f), 'utf8'));
-    } catch { return null; }
-  }).filter(Boolean);
-}
-
-function getRecentBriefSummaries(briefsDir, ensureBriefsDir, count = 3) {
-  const briefs = loadBriefs(briefsDir, ensureBriefsDir).slice(0, count);
-  if (briefs.length === 0) return '';
-  return briefs.map((b, i) => {
-    const date = new Date(b.timestamp).toISOString().split('T')[0];
-    // Take first 800 chars of each brief as context
-    const excerpt = b.text.substring(0, 800);
-    return `--- Previous Brief (${date}) ---\n${excerpt}\n---`;
-  }).join('\n\n');
+async function getRecentBriefSummaries(count = 3) {
+  const recent = await briefingsModel.getRecent(count);
+  if (recent.length === 0) return '';
+  return recent.map(b => b.content.slice(0, 800)).join('\n---\n');
 }
 
 // GET /api/brief — AI Brief (streaming)
@@ -55,7 +25,7 @@ router.get('/brief', async (req, res) => {
     });
   }
 
-  const { loadSources, ensureBriefsDir, briefsDir } = req.app.locals;
+  const { loadSources } = req.app.locals;
 
   try {
     const src = loadSources();
@@ -90,7 +60,7 @@ router.get('/brief', async (req, res) => {
 
     const lang = req.query.lang || 'en';
 
-    const previousBriefs = getRecentBriefSummaries(briefsDir, ensureBriefsDir, 3);
+    const previousBriefs = await getRecentBriefSummaries(3);
     const continuityContext = previousBriefs
       ? `\n\nPREVIOUS INTELLIGENCE BRIEFS (for continuity - reference changes since last brief, highlight new developments):\n${previousBriefs}\n`
       : '';
@@ -188,9 +158,17 @@ Keep it concise but substantive. If previous briefs are provided, explicitly not
     );
     res.end();
 
-    // Save the completed brief
-    ensureBriefsDir();
-    saveBrief(briefsDir, fullText, finalMessage.usage);
+    // Save the completed brief to PostgreSQL
+    try {
+      await briefingsModel.create({
+        content: fullText,
+        model: 'claude-sonnet-4-5-20250514',
+        input_tokens: finalMessage.usage.input_tokens || 0,
+        output_tokens: finalMessage.usage.output_tokens || 0,
+      });
+    } catch (e) {
+      console.error('[brief] DB save error:', e.message);
+    }
 
     console.log(
       `[BRIEF] Generated. Tokens: ${finalMessage.usage.input_tokens} in / ${finalMessage.usage.output_tokens} out`
@@ -208,31 +186,38 @@ Keep it concise but substantive. If previous briefs are provided, explicitly not
   }
 });
 
-// GET /api/briefs — Brief History
-router.get('/briefs', (req, res) => {
-  const { ensureBriefsDir, briefsDir } = req.app.locals;
-  const briefs = loadBriefs(briefsDir, ensureBriefsDir);
-  // Return list without full text for efficiency
-  const list = briefs.map(b => ({
-    id: b.id,
-    timestamp: b.timestamp,
-    usage: b.usage,
-    preview: b.text.substring(0, 200),
-  }));
-  res.json({ ok: true, briefs: list });
+// GET /api/briefs — Brief History (from PostgreSQL)
+router.get('/briefs', async (req, res) => {
+  try {
+    const briefs = await briefingsModel.getAll();
+    const list = briefs.map(b => ({
+      id: b.id,
+      timestamp: b.created_at,
+      usage: { in: b.input_tokens, out: b.output_tokens },
+    }));
+    res.json({ ok: true, briefs: list });
+  } catch (err) {
+    console.error('[briefs] List error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
-// GET /api/briefs/:id
-router.get('/briefs/:id', (req, res) => {
-  const { briefsDir } = req.app.locals;
-  const filePath = path.join(briefsDir, `${req.params.id}.json`);
+// GET /api/briefs/:id (from PostgreSQL)
+router.get('/briefs/:id', async (req, res) => {
   try {
-    if (!fs.existsSync(filePath)) {
+    const brief = await briefingsModel.getById(req.params.id);
+    if (!brief) {
       return res.status(404).json({ ok: false, error: 'Brief not found' });
     }
-    const brief = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    res.json({ ok: true, brief });
+    res.json({
+      ok: true,
+      id: brief.id,
+      timestamp: brief.created_at,
+      text: brief.content,
+      usage: { in: brief.input_tokens, out: brief.output_tokens },
+    });
   } catch (err) {
+    console.error('[briefs] GetById error:', err.message);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
