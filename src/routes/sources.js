@@ -342,4 +342,30 @@ router.post('/sources/search', async (req, res) => {
   res.json({ ok: true, results });
 });
 
+// POST /api/sources/add-web-monitor
+router.post('/sources/add-web-monitor', async (req, res) => {
+  try {
+    const { url, name, competitor_key, category } = req.body;
+    if (!url) return res.status(400).json({ ok: false, error: 'URL required' });
+
+    const source = await sourcesModel.create({
+      type: 'web_monitor',
+      url,
+      name: name || url,
+      competitor_key: competitor_key || null,
+      category: category || 'industry',
+    });
+
+    // Take initial snapshot asynchronously (don't block response)
+    const webMonitor = require('../services/webMonitorService');
+    webMonitor.checkSource(source).catch(e => {
+      console.error('[sources] Initial snapshot failed for ' + url + ': ' + e.message);
+    });
+
+    res.json({ ok: true, source });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 module.exports = { router };
