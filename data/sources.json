@@ -1,0 +1,87 @@
+{
+  "competitors": {
+    "snigel": {
+      "name": "Snigel Design",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SNIGEL%22+tactical&hl=en&gl=SE&ceid=SE:en",
+        "https://news.google.com/rss/search?q=%22Snigel+Design%22+OR+%22SnigelDesign%22&hl=sv&gl=SE&ceid=SE:sv"
+      ]
+    },
+    "nfm": {
+      "name": "NFM Group",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22NFM+Group%22+military+OR+defense+OR+tactical&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22NFM+Group%22+OR+%22nfm.no%22&hl=no&gl=NO&ceid=NO:no"
+      ]
+    },
+    "mehler": {
+      "name": "Mehler Systems",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Protection%22&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Mehler+Systems%22+OR+%22Mehler+Vario%22&hl=de&gl=DE&ceid=DE:de"
+      ]
+    },
+    "lindnerhof": {
+      "name": "Lindnerhof Taktik",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Lindnerhof+Taktik%22+OR+%22Lindnerhof-Taktik%22&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Lindnerhof%22+tactical+OR+military&hl=de&gl=DE&ceid=DE:de"
+      ]
+    },
+    "sacci": {
+      "name": "Sacci AB",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22+military+OR+tactical+OR+medical&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Sacci+AB%22+OR+%22Sacci+Pro%22&hl=sv&gl=SE&ceid=SE:sv"
+      ]
+    },
+    "savotta": {
+      "name": "Savotta",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Savotta%22+military+OR+defense+OR+tactical+Finland&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Savotta%22+puolustusvoimat+OR+armeija&hl=fi&gl=FI&ceid=FI:fi"
+      ]
+    },
+    "taiga": {
+      "name": "Taiga AB",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Taiga%22+tactical+clothing+military+Sweden&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Taiga+AB%22+OR+%22taiga.se%22&hl=sv&gl=SE&ceid=SE:sv"
+      ]
+    },
+    "tasmanian_tiger": {
+      "name": "Tasmanian Tiger",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+tactical+OR+military+OR+gear&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Tasmanian+Tiger%22+Tatonka+tactical&hl=de&gl=DE&ceid=DE:de"
+      ]
+    },
+    "equipnor": {
+      "name": "Equipnor",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Equipnor%22+military+OR+defense&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Equipnor%22&hl=sv&gl=SE&ceid=SE:sv"
+      ]
+    },
+    "ptd": {
+      "name": "PTD Group",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22+OR+%22PTD+Group%22&hl=en&ceid=US:en",
+        "https://news.google.com/rss/search?q=%22Precision+Technic+Defence%22&hl=da&gl=DK&ceid=DK:da"
+      ]
+    },
+    "ufpro": {
+      "name": "UF PRO",
+      "feeds": [
+        "https://news.google.com/rss/search?q=%22UF+PRO%22+tactical+clothing+military&hl=en&ceid=US:en"
+      ]
+    }
+  },
+  "industry": [
+    "https://news.google.com/rss/search?q=european+defense+equipment+tactical+soldier+modernization&hl=en&ceid=US:en",
+    "https://news.google.com/rss/search?q=soldier+equipment+Europe+procurement+2025+OR+2026&hl=en&ceid=US:en",
+    "https://news.google.com/rss/search?q=europeisk+f%C3%B6rsvar+upphandling+soldatutrustning&hl=sv&gl=SE&ceid=SE:sv",
+    "https://news.google.com/rss/search?q=NATO+soldier+modernization+load+carrying&hl=en&ceid=US:en",
+    "https://www.reddit.com/r/tacticalgear/.rss"
+  ]
+}
