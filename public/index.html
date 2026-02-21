@@ -440,8 +440,8 @@ body::after {
 <main class="main">
   <section class="panel radar-panel">
     <div class="panel-header">
-      <div class="panel-title"><div class="icon"></div>Threat Radar</div>
-      <div class="panel-count">Proximity = competitive overlap</div>
+      <div class="panel-title"><div class="icon"></div>News Radar</div>
+      <div class="panel-count">Classifying signals...</div>
     </div>
     <div class="radar-container"><canvas id="radarCanvas"></canvas></div>
     <div class="radar-legend" id="radarLegend"></div>
@@ -642,6 +642,16 @@ const TRANSLATIONS = {
     integration: 'INTEGRATION',
     medical: 'MEDICAL',
     distribution: 'DISTRIBUTION',
+    // Radar quadrants (news radar)
+    radarQuadCompetitors: 'COMPETITORS',
+    radarQuadIndustry: 'INDUSTRY',
+    radarQuadSnigel: 'SNIGEL',
+    radarQuadAnomalies: 'ANOMALIES',
+    newsRadar: 'News Radar',
+    radarSubNews: 'Proximity = relevance to Snigel',
+    radarLoading: 'Classifying signals...',
+    radarNoItems: 'No radar items yet. Click SCAN NOW.',
+    radarItemsCount: 'items on radar',
     // Radar rings
     critical: 'CRITICAL',
     // Spider / capabilities
@@ -796,6 +806,15 @@ const TRANSLATIONS = {
     integration: 'INTEGRATION',
     medical: 'SJUKV\u00c5RD',
     distribution: 'DISTRIBUTION',
+    radarQuadCompetitors: 'KONKURRENTER',
+    radarQuadIndustry: 'BRANSCH',
+    radarQuadSnigel: 'SNIGEL',
+    radarQuadAnomalies: 'ANOMALIER',
+    newsRadar: 'Nyhetsradar',
+    radarSubNews: 'Närhet = relevans för Snigel',
+    radarLoading: 'Klassificerar signaler...',
+    radarNoItems: 'Inga radarobjekt ännu. Klicka SKANNA NU.',
+    radarItemsCount: 'objekt på radarn',
     critical: 'KRITISK',
     productBreadth: 'Produktbredd',
     productionScale: 'Produktionsskala',
@@ -925,11 +944,11 @@ function applyTranslations() {
   renderTimeline();
   renderFeed();
   cancelAnimationFrame(radarAnimFrame);
-  initRadar();
+  fetchRadarItems();
   renderSpider();
   // Update static panel headers
   const panels = document.querySelectorAll('.panel');
-  if (panels[0]) { panels[0].querySelector('.panel-title').lastChild.textContent = t('threatRadar'); panels[0].querySelector('.panel-count').textContent = t('radarSub'); }
+  if (panels[0]) { panels[0].querySelector('.panel-title').lastChild.textContent = t('newsRadar'); panels[0].querySelector('.panel-count').textContent = t('radarSubNews'); }
   if (panels[1]) { panels[1].querySelector('.panel-title').lastChild.textContent = t('liveFeed'); }
   if (panels[2]) { panels[2].querySelector('.panel-title').lastChild.textContent = t('competitorProfiles'); panels[2].querySelector('.panel-count').textContent = t('clickExpand'); }
   if (panels[3]) { panels[3].querySelector('.panel-title').lastChild.textContent = t('capabilityComparison'); }
@@ -1028,6 +1047,8 @@ let expandedCard = null;
 let spiderSelected = ['nfm', 'lindnerhof', 'tasmanian_tiger'];
 let radarAnimFrame = null;
 let radarAngle = 0;
+let radarItems = [];
+let radarHoveredItem = null;
 
 /* ═══════════════════════════════════════════
    INIT
@@ -1068,7 +1089,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   renderCompetitorCards();
   renderTimeline();
   document.documentElement.lang = currentLang;
-  initRadar();
+  fetchRadarItems();
   initSpider();
   renderSpider();
   setTimeout(() => document.getElementById('loadingOverlay').classList.add('hidden'), 1800);
@@ -1097,6 +1118,25 @@ function buildFeedTabs() {
   });
 }
 
+async function fetchRadarItems() {
+  try {
+    const res = await fetch('/api/radar');
+    const data = await res.json();
+    if (data.ok && data.items) {
+      radarItems = data.items;
+      const panels = document.querySelectorAll('.panel');
+      if (panels[0]) {
+        panels[0].querySelector('.panel-count').textContent =
+          `${radarItems.length} ${t('radarItemsCount')}`;
+      }
+    }
+  } catch (err) {
+    console.error('[RADAR] Fetch error:', err.message);
+  }
+  cancelAnimationFrame(radarAnimFrame);
+  initRadar();
+}
+
 /* ═══════════════════════════════════════════
    RADAR CANVAS
    ═══════════════════════════════════════════ */
@@ -1108,13 +1148,47 @@ function initRadar() {
   canvas.height = rect.height * dpr;
   canvas.style.width = rect.width + 'px';
   canvas.style.height = rect.height + 'px';
+
+  // Build legend for 4 quadrants
   const legend = document.getElementById('radarLegend');
   legend.replaceChildren();
-  Object.entries(COMPETITORS).forEach(([key, c]) => {
-    const dot = createEl('div', { className: 'legend-dot', style: { background: c.color } });
-    const item = createEl('div', { className: 'legend-item' }, [dot, c.name]);
+  const quadrants = [
+    { key: 'competitors', color: '#ef4444', label: t('radarQuadCompetitors') },
+    { key: 'industry', color: '#38bdf8', label: t('radarQuadIndustry') },
+    { key: 'snigel', color: '#00e5a0', label: t('radarQuadSnigel') },
+    { key: 'anomalies', color: '#f0a500', label: t('radarQuadAnomalies') },
+  ];
+  quadrants.forEach(q => {
+    const dot = createEl('div', { className: 'legend-dot', style: { background: q.color } });
+    const item = createEl('div', { className: 'legend-item' }, [dot, q.label]);
     legend.appendChild(item);
   });
+
+  // Assign angular positions to radar items within their quadrant
+  const quadrantRanges = {
+    competitors: [315, 45],
+    industry:   [45, 135],
+    snigel:     [135, 225],
+    anomalies:  [225, 315],
+  };
+
+  const byQuadrant = { competitors: [], industry: [], snigel: [], anomalies: [] };
+  radarItems.forEach(item => {
+    const q = byQuadrant[item.quadrant] || byQuadrant.anomalies;
+    q.push(item);
+  });
+
+  Object.entries(byQuadrant).forEach(([qKey, items]) => {
+    const [startDeg, endDeg] = quadrantRanges[qKey];
+    const range = startDeg < endDeg ? endDeg - startDeg : (360 - startDeg + endDeg);
+    items.forEach((item, i) => {
+      const fraction = items.length === 1 ? 0.5 : (i + 0.5) / items.length;
+      const angleDeg = startDeg + fraction * range;
+      item._angleDeg = angleDeg % 360;
+      item._dist = 0.15 + (1 - item.relevance) * 0.7;
+    });
+  });
+
   animateRadar();
 }
 
@@ -1122,78 +1196,171 @@ function animateRadar() {
   const canvas = document.getElementById('radarCanvas');
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
-  const cx = w/2, cy = h/2;
+  const cx = w / 2, cy = h / 2;
   const maxR = Math.min(cx, cy) * 0.88;
   const dpr = window.devicePixelRatio || 1;
   radarAngle += 0.008;
   ctx.clearRect(0, 0, w, h);
 
+  // Concentric rings
   for (let i = 1; i <= 4; i++) {
-    const r = maxR * (i/4);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2);
-    ctx.strokeStyle = i===4 ? '#1a2740' : '#0f1a2e'; ctx.lineWidth = dpr; ctx.stroke();
+    const r = maxR * (i / 4);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = i === 4 ? '#1a2740' : '#0f1a2e'; ctx.lineWidth = dpr; ctx.stroke();
   }
-  for (let a = 0; a < 6; a++) {
-    const angle = (a*Math.PI*2)/6;
+
+  // 4 quadrant dividing lines (cross)
+  for (let a = 0; a < 4; a++) {
+    const angle = ((a * 90 + 45 - 90) * Math.PI) / 180;
     ctx.beginPath(); ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(angle)*maxR, cy + Math.sin(angle)*maxR);
-    ctx.strokeStyle = '#0f1a2e'; ctx.lineWidth = dpr; ctx.stroke();
+    ctx.lineTo(cx + Math.cos(angle) * maxR, cy + Math.sin(angle) * maxR);
+    ctx.strokeStyle = '#1a2740'; ctx.lineWidth = dpr; ctx.stroke();
   }
-  const sectors = [{a:0,l:t('carry')},{a:60,l:t('ballistic')},{a:120,l:t('clothing')},{a:180,l:t('integration')},{a:240,l:t('medical')},{a:300,l:t('distribution')}];
-  ctx.font = `${10*dpr}px 'Share Tech Mono', monospace`;
-  ctx.fillStyle = '#3e506a'; ctx.textAlign = 'center';
-  sectors.forEach(s => {
-    const a = ((s.a-90)*Math.PI)/180;
-    ctx.fillText(s.l, cx + Math.cos(a)*(maxR+18*dpr), cy + Math.sin(a)*(maxR+18*dpr) + 3*dpr);
+
+  // Quadrant labels
+  const quadLabels = [
+    { label: t('radarQuadCompetitors'), deg: 0, color: '#ef4444' },
+    { label: t('radarQuadIndustry'), deg: 90, color: '#38bdf8' },
+    { label: t('radarQuadSnigel'), deg: 180, color: '#00e5a0' },
+    { label: t('radarQuadAnomalies'), deg: 270, color: '#f0a500' },
+  ];
+  ctx.font = `${10 * dpr}px 'Share Tech Mono', monospace`;
+  quadLabels.forEach(ql => {
+    const a = ((ql.deg - 90) * Math.PI) / 180;
+    ctx.fillStyle = ql.color + '88';
+    ctx.textAlign = 'center';
+    ctx.fillText(ql.label, cx + Math.cos(a) * (maxR * 0.55), cy + Math.sin(a) * (maxR * 0.55) + 3 * dpr);
   });
 
+  // Sweep line
   ctx.save(); ctx.translate(cx, cy); ctx.rotate(radarAngle);
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, maxR, -0.4, 0); ctx.closePath();
   const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, maxR);
   sg.addColorStop(0, '#00e5a000'); sg.addColorStop(0.3, '#00e5a015'); sg.addColorStop(1, '#00e5a008');
   ctx.fillStyle = sg; ctx.fill();
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(maxR, 0);
-  ctx.strokeStyle = '#00e5a066'; ctx.lineWidth = 1.5*dpr; ctx.stroke();
+  ctx.strokeStyle = '#00e5a066'; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
   ctx.restore();
 
-  ctx.font = `${8*dpr}px 'Share Tech Mono', monospace`;
+  // Ring labels
+  ctx.font = `${8 * dpr}px 'Share Tech Mono', monospace`;
   ctx.fillStyle = '#243554'; ctx.textAlign = 'left';
-  [t('critical'),t('high').toUpperCase(),t('medium').toUpperCase(),t('low').toUpperCase()].forEach((label, i) => {
-    ctx.fillText(label, cx + 6*dpr, cy - maxR*((i+1)/4) + 12*dpr);
+  ['HIGH', 'MED', 'LOW', ''].forEach((label, i) => {
+    if (!label) return;
+    ctx.fillText(label, cx + 6 * dpr, cy - maxR * ((i + 1) / 4) + 12 * dpr);
   });
 
-  Object.entries(COMPETITORS).forEach(([key, c]) => {
-    const angle = ((c.radarAngle-90)*Math.PI)/180;
-    const dist = c.radarDist * maxR;
-    const bx = cx + Math.cos(angle)*dist, by = cy + Math.sin(angle)*dist;
-    const blipAngle = Math.atan2(by-cy, bx-cx);
+  // Quadrant colors for blips
+  const quadColors = { competitors: '#ef4444', industry: '#38bdf8', snigel: '#00e5a0', anomalies: '#f0a500' };
+
+  // Draw news blips
+  radarItems.forEach((item) => {
+    if (item._angleDeg === undefined) return;
+    const angle = ((item._angleDeg - 90) * Math.PI) / 180;
+    const dist = item._dist * maxR;
+    const bx = cx + Math.cos(angle) * dist;
+    const by = cy + Math.sin(angle) * dist;
+    const color = quadColors[item.quadrant] || '#f0a500';
+
+    // Sweep glow effect
+    const blipAngle = Math.atan2(by - cy, bx - cx);
     let sd = radarAngle - blipAngle;
-    while (sd > Math.PI) sd -= Math.PI*2;
-    while (sd < -Math.PI) sd += Math.PI*2;
+    while (sd > Math.PI) sd -= Math.PI * 2;
+    while (sd < -Math.PI) sd += Math.PI * 2;
     const near = Math.abs(sd) < 0.5;
-    const fade = near ? 1 - Math.abs(sd)/0.5 : 0;
+    const fade = near ? 1 - Math.abs(sd) / 0.5 : 0;
     if (near) {
-      const gr = (12 + fade*8)*dpr;
+      const gr = (12 + fade * 8) * dpr;
       const glow = ctx.createRadialGradient(bx, by, 0, bx, by, gr);
-      glow.addColorStop(0, c.color+'66'); glow.addColorStop(1, c.color+'00');
-      ctx.beginPath(); ctx.arc(bx, by, gr, 0, Math.PI*2); ctx.fillStyle = glow; ctx.fill();
+      glow.addColorStop(0, color + '66'); glow.addColorStop(1, color + '00');
+      ctx.beginPath(); ctx.arc(bx, by, gr, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
     }
-    const bs = (c.threat==='high'?5:c.threat==='medium'?4:3)*dpr;
-    ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI*2); ctx.fillStyle = c.color; ctx.fill();
-    ctx.beginPath(); ctx.arc(bx, by, bs+2*dpr, 0, Math.PI*2);
-    ctx.strokeStyle = c.color+'44'; ctx.lineWidth = dpr; ctx.stroke();
-    ctx.font = `${9*dpr}px 'Rajdhani', sans-serif`;
-    ctx.fillStyle = c.color+'cc'; ctx.textAlign = 'center';
-    ctx.fillText(c.name.split(' ')[0], bx, by + bs*1.5 + 12*dpr);
+
+    // Blip dot — size varies by relevance
+    const bs = (3 + item.relevance * 3) * dpr;
+    ctx.beginPath(); ctx.arc(bx, by, bs, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    ctx.beginPath(); ctx.arc(bx, by, bs + 2 * dpr, 0, Math.PI * 2);
+    ctx.strokeStyle = color + '44'; ctx.lineWidth = dpr; ctx.stroke();
+
+    // Label
+    ctx.font = `${8 * dpr}px 'Rajdhani', sans-serif`;
+    ctx.fillStyle = color + 'cc'; ctx.textAlign = 'center';
+    const labelText = (item.label || '').substring(0, 20);
+    ctx.fillText(labelText, bx, by + bs * 1.5 + 10 * dpr);
+
+    // Store pixel position for hit-testing
+    item._bx = bx / dpr; item._by = by / dpr; item._bs = bs / dpr;
   });
 
-  ctx.beginPath(); ctx.arc(cx, cy, 3*dpr, 0, Math.PI*2);
+  // Center dot — Snigel
+  ctx.beginPath(); ctx.arc(cx, cy, 3 * dpr, 0, Math.PI * 2);
   ctx.fillStyle = '#00e5a0'; ctx.fill();
-  ctx.font = `bold ${10*dpr}px 'Oxanium', sans-serif`;
+  ctx.font = `bold ${10 * dpr}px 'Oxanium', sans-serif`;
   ctx.fillStyle = '#00e5a0'; ctx.textAlign = 'center';
-  ctx.fillText('SNIGEL', cx, cy + 16*dpr);
+  ctx.fillText('SNIGEL', cx, cy + 16 * dpr);
+
+  // Hover tooltip
+  if (radarHoveredItem) {
+    const hi = radarHoveredItem;
+    const tx = hi._bx * dpr, ty = (hi._by - 20) * dpr;
+    const tooltipText = hi.title || hi.label;
+    ctx.font = `${10 * dpr}px 'Rajdhani', sans-serif`;
+    const tw = ctx.measureText(tooltipText).width + 16 * dpr;
+    const th = 22 * dpr;
+    const ttx = Math.max(4 * dpr, Math.min(tx - tw / 2, w - tw - 4 * dpr));
+    const tty = Math.max(4 * dpr, ty - th);
+    ctx.fillStyle = '#0d1528ee';
+    ctx.strokeStyle = (quadColors[hi.quadrant] || '#f0a500') + '88';
+    ctx.lineWidth = dpr;
+    ctx.beginPath();
+    ctx.roundRect(ttx, tty, tw, th, 3 * dpr);
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e2e8f0';
+    ctx.textAlign = 'left';
+    ctx.fillText(tooltipText, ttx + 8 * dpr, tty + 15 * dpr);
+  }
+
   radarAnimFrame = requestAnimationFrame(animateRadar);
 }
+
+// --- Radar mouse interaction ---
+(function setupRadarMouse() {
+  const canvas = document.getElementById('radarCanvas');
+
+  function getHitItem(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    let closest = null, closestDist = Infinity;
+    radarItems.forEach(item => {
+      if (item._bx === undefined) return;
+      const dx = mx - item._bx, dy = my - item._by;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < (item._bs + 6) && d < closestDist) {
+        closest = item; closestDist = d;
+      }
+    });
+    return closest;
+  }
+
+  canvas.addEventListener('mousemove', (e) => {
+    const hit = getHitItem(e);
+    radarHoveredItem = hit;
+    canvas.style.cursor = hit ? 'pointer' : 'default';
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    radarHoveredItem = null;
+    canvas.style.cursor = 'default';
+  });
+
+  canvas.addEventListener('click', (e) => {
+    const hit = getHitItem(e);
+    if (hit && hit.link) {
+      window.open(hit.link, '_blank', 'noopener');
+    }
+  });
+})();
 
 /* ═══════════════════════════════════════════
    SPIDER CHART
@@ -1418,6 +1585,7 @@ async function refreshFeeds() {
     document.getElementById('feedCount').textContent = `${total} ${t('signals')}`;
     document.getElementById('lastScan').textContent = `${t('lastScan')} ${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`;
     renderFeed();
+    fetchRadarItems();
   } catch(err) {
     console.warn('Feed fetch error:', err.message);
     document.getElementById('feedItemCount').textContent = t('serverOffline');
